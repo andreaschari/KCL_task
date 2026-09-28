@@ -1,0 +1,41 @@
+# CQ2 — Which practices are prohibited, which article prohibits each, and
+# which of them are subject to conditional exemption?
+#
+# A practice returned with no ?exemption binding is unconditionally
+# prohibited; one with bindings is prohibition-with-conditions. A MISSING
+# exemption therefore reads as a stronger legal claim than the Act makes,
+# so exemptions must be checked against the Official Journal text directly.
+#
+# Typing articles as eli:LegalResourceSubdivision is sound under ELI's own
+# domain axioms, but only because v1.4 declares that class under both
+# LegalResource and WorkSubdivision, with both under Work. Pinned to v1.3
+# this query would carry an unintended entailment.
+PREFIX aia:      <https://w3id.org/aia-ont#>
+PREFIX eli:      <http://data.europa.eu/eli/ontology#>
+PREFIX skos:     <http://www.w3.org/2004/02/skos/core#>
+PREFIX airo:     <https://w3id.org/airo#>
+PREFIX org:      <http://www.w3.org/ns/org#>
+PREFIX eu-aiact: <https://w3id.org/dpv/legal/eu/aiact/owl#>
+
+SELECT ?practice ?practiceLabel ?practiceDefinition
+       ?article ?articleNumber
+       ?exemption ?exemptionLabel ?exemptionArticle
+WHERE {
+  ?practice a aia:ProhibitedPractice ;
+            skos:prefLabel ?practiceLabel ;
+            aia:prohibitedBy ?article .
+
+  ?article a eli:LegalResourceSubdivision ;
+           eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+  OPTIONAL { ?practice skos:definition ?practiceDefinition }
+  OPTIONAL { ?article  eli:number      ?articleNumber }
+
+  OPTIONAL {
+    ?practice aia:hasExemption ?exemption .
+    ?exemption a aia:Exemption ;
+               skos:prefLabel ?exemptionLabel .
+    OPTIONAL { ?exemption aia:providedFor ?exemptionArticle }
+  }
+}
+ORDER BY ?articleNumber ?practiceLabel

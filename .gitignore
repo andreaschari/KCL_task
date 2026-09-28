@@ -1,0 +1,34 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Node
+node_modules/
+
+# Ontology / Protégé
+*.owl.bak
+*.pprj
+.protege/
+*~
+
+# Vendored imports under ontology/imports/ are COMMITTED deliberately —
+# see ontology/imports/README.md. Do not add them here.
+
+# scripts/run-hermit.sh's build cache: extracted OWL API dependency jars and a
+# fetched HermiT runtime dependency, rebuilt on demand — not source.
+scripts/.hermit-build/
+
+# Task brief -- kept locally, not published
+/Task specification postdoc.docx

@@ -1,0 +1,26 @@
+# CQ1, reasoner variant — the same question posed as an entailment check,
+# to be run after classification in Protégé rather than as a data query.
+#
+# This entailment HOLDS as of 2026-09-26 and is false over the asserted graph,
+# which is the whole point of the variant: no file asserts that any example
+# system is a eu-aiact:HighRiskAISystem. It succeeds through aia:HighRiskByGround,
+# the local defined class of the Annex III / Annex I disjunction, which is
+# rdfs:subClassOf eu-aiact:HighRiskAISystem -- so the import gains no axiom.
+# The equivalence was deliberately NOT asserted on the imported class: that
+# would make the two Article 6 routes necessary as well as sufficient, which
+# Article 6(3) contradicts. See the classification-rule section of ontology/aia-ont.ttl.
+#
+# The system asked about is minted in ontology/aia-example.ttl and is typed
+# airo:AISystem with an Annex III ground, and NOT with any eu-aiact Annex class
+# -- typing it -AnnexIII-4-a would satisfy this ASK by re-assertion and test
+# nothing.
+PREFIX aia:      <https://w3id.org/aia-ont#>
+PREFIX eli:      <http://data.europa.eu/eli/ontology#>
+PREFIX skos:     <http://www.w3.org/2004/02/skos/core#>
+PREFIX airo:     <https://w3id.org/airo#>
+PREFIX org:      <http://www.w3.org/ns/org#>
+PREFIX eu-aiact: <https://w3id.org/dpv/legal/eu/aiact/owl#>
+
+ASK {
+  aia:ExampleRecruitmentScreeningSystem a eu-aiact:HighRiskAISystem .
+}

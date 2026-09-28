@@ -1,0 +1,43 @@
+$ scripts/run-hermit.sh
+(DEBUG-level OWL API service-loading noise stripped; INFO/WARN/ERROR kept verbatim)
+
+Loading /home/andreas/Documents/KCL_task/ontology/aia-example.ttl (imports the core, which imports all four vendored ontologies) ...
+(31 OWL API INFO "Usage of rdf vocabulary" lines for DPV/SKOS rdf:Property declarations removed; harmless)
+
+--- Finding 2: ELI's own AnnotationProperty stubs for four SKOS terms collide with
+    SKOS's own ObjectProperty declarations for the same URIs (see task-13-findings.md) ---
+WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#narrower in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#narrower>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#narrower>))]
+WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#broader in punning not allowed [Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#broader>)), Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#broader>))]
+WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#hasTopConcept in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>))]
+WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#topConceptOf in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>))]
+(repeated 3 times more as the parser revisits the same declarations while resolving imports; harmless duplication)
+
+Loaded ontology: OntologyID(OntologyIRI(<https://w3id.org/aia-ont/example>) VersionIRI(<https://w3id.org/aia-ont/example/0.1>))
+Imports closure size (ontologies): 6
+Total axiom count across closure (with duplication from direct+imported sum): 4940
+
+=== Starting HermiT reasoner ===
+
+--- Finding 1: HermiT refuses to classify because ELI's own rdfs:range declarations
+    use xsd:date, which is outside the OWL 2 datatype map (see task-13-findings.md) ---
+Exception in thread "main" org.semanticweb.HermiT.datatypes.UnsupportedDatatypeException: HermiT supports all and only the datatypes of the OWL 2 datatype map, see
+http://www.w3.org/TR/owl2-syntax/#Datatype_Maps.
+The datatype 'http://www.w3.org/2001/XMLSchema#date' is not part of the OWL 2 datatype map and
+no custom datatype definition is given;
+therefore, HermiT cannot handle this datatype.
+	at org.semanticweb.HermiT.datatypes.DatatypeRegistry.getDatatypeHandlerFor(DatatypeRegistry.java:76)
+	at org.semanticweb.HermiT.datatypes.DatatypeRegistry.getDatatypeHandlerFor(DatatypeRegistry.java:82)
+	at org.semanticweb.HermiT.datatypes.DatatypeRegistry.validateDatatypeRestriction(DatatypeRegistry.java:113)
+	at org.semanticweb.HermiT.structural.OWLClausification$DataRangeConverter.visit(OWLClausification.java:834)
+	at uk.ac.manchester.cs.owl.owlapi.OWLDatatypeImpl.accept(OWLDatatypeImpl.java:267)
+	at org.semanticweb.HermiT.structural.OWLClausification$DataRangeConverter.convertDataRange(OWLClausification.java:820)
+	at org.semanticweb.HermiT.structural.OWLClausification$NormalizedAxiomClausifier.visit(OWLClausification.java:647)
+	at uk.ac.manchester.cs.owl.owlapi.OWLDataAllValuesFromImpl.accept(OWLDataAllValuesFromImpl.java:82)
+	at org.semanticweb.HermiT.structural.OWLClausification.clausify(OWLClausification.java:235)
+	at org.semanticweb.HermiT.structural.OWLClausification.preprocessAndClausify(OWLClausification.java:165)
+	at org.semanticweb.HermiT.Reasoner.loadOntology(Reasoner.java:211)
+	at org.semanticweb.HermiT.Reasoner.<init>(Reasoner.java:202)
+	at org.semanticweb.HermiT.Reasoner.<init>(Reasoner.java:176)
+	at org.semanticweb.HermiT.ReasonerFactory.createHermiTOWLReasoner(ReasonerFactory.java:51)
+	at org.semanticweb.HermiT.ReasonerFactory.createReasoner(ReasonerFactory.java:19)
+	at RunHermit.main(RunHermit.java:45)

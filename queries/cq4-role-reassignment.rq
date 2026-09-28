@@ -1,0 +1,78 @@
+# CQ4 — Under what conditions does a deployer, distributor or importer become
+# a provider, which obligations does it thereby acquire, and what becomes of
+# the initial provider?
+#
+# This is the query that exercises the reification. Binding aia:heldBy to the
+# same ?actor across the promoted and established assignments encodes that the
+# SAME party changed standing, rather than one party gaining a role while an
+# unrelated party lost one. The initial provider reached through
+# aia:terminates is a distinct actor.
+#
+# The initial provider's residual duties under Art. 25(2) are concatenated
+# into one column so that they do not multiply the acquired-obligation rows.
+# They need the inferred graph, as CQ3 does.
+#
+# The event is deliberately asymmetric: aia:promotes does not end the prior
+# assignment (Art. 25(1) does not provide that the prior role ceases;
+# Recital 83 supports the cumulative reading), while aia:terminates does end
+# the initial provider's (Art. 25(2) provides so in terms).
+PREFIX aia:      <https://w3id.org/aia-ont#>
+PREFIX eli:      <http://data.europa.eu/eli/ontology#>
+PREFIX skos:     <http://www.w3.org/2004/02/skos/core#>
+PREFIX airo:     <https://w3id.org/airo#>
+PREFIX org:      <http://www.w3.org/ns/org#>
+PREFIX eu-aiact: <https://w3id.org/dpv/legal/eu/aiact/owl#>
+
+SELECT ?actorLabel ?fromRoleLabel ?conditionLabel ?triggeringArticle
+       ?acquiredObligation ?acquiredLabel ?acquiredArticle
+       ?initialProviderLabel ?initialProviderDuties
+WHERE {
+  ?reassignment a aia:RoleReassignment ;
+                aia:concernsSystem ?system ;
+                aia:promotes       ?priorAssignment ;
+                aia:establishes    ?newAssignment ;
+                aia:triggeredBy    ?condition ;
+                aia:statedIn       ?triggeringArticle .
+
+  ?priorAssignment aia:concernsSystem ?system ;
+                   aia:hasRole        ?fromRole ;
+                   aia:heldBy         ?actor .
+
+  ?newAssignment   aia:concernsSystem ?system ;
+                   aia:hasRole        aia:Provider ;
+                   aia:heldBy         ?actor .
+
+  ?actor     skos:prefLabel ?actorLabel .
+  ?fromRole  skos:prefLabel ?fromRoleLabel .
+  ?condition a aia:ReassignmentCondition ;
+             skos:prefLabel ?conditionLabel .
+
+  ?acquiredObligation a aia:Obligation ;
+                      aia:borneBy    aia:Provider ;
+                      skos:prefLabel ?acquiredLabel ;
+                      aia:statedIn   ?acquiredArticle .
+
+  # obligations genuinely acquired, i.e. not already borne in the retained prior role
+  FILTER NOT EXISTS { ?acquiredObligation aia:borneBy ?fromRole }
+
+  # Article 25(2): the initial provider's assignment is terminated
+  OPTIONAL {
+    ?reassignment aia:terminates ?initialProviderAssignment .
+    ?initialProviderAssignment aia:concernsSystem ?system ;
+                               aia:hasRole        aia:Provider ;
+                               aia:heldBy         ?initialProvider .
+    ?initialProvider skos:prefLabel ?initialProviderLabel .
+    OPTIONAL {
+      SELECT ?initialProviderAssignment
+             (GROUP_CONCAT(DISTINCT ?dutyLabel; separator="; ") AS ?initialProviderDuties)
+      WHERE {
+        ?initialProviderAssignment a aia:TerminatedRoleAssignment ;
+                                   aia:hasRole ?endedRole .
+        ?duty aia:borneOnTermination ?endedRole ;
+              skos:prefLabel ?dutyLabel .
+      }
+      GROUP BY ?initialProviderAssignment
+    }
+  }
+}
+ORDER BY ?actorLabel ?acquiredArticle

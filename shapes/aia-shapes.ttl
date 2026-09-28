@@ -1,0 +1,574 @@
+@prefix sh:           <http://www.w3.org/ns/shacl#> .
+@prefix shp:          <https://w3id.org/aia-ont/shapes#> .
+@prefix aia:          <https://w3id.org/aia-ont#> .
+@prefix owl:          <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:          <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:         <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:          <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:          <http://purl.org/dc/terms/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+@prefix eli:          <http://data.europa.eu/eli/ontology#> .
+@prefix airo:         <https://w3id.org/airo#> .
+@prefix eu-aiact-owl: <https://w3id.org/dpv/legal/eu/aiact/owl#> .
+@prefix org:          <http://www.w3.org/ns/org#> .
+
+#################################################################
+#    AIA-Ont SHACL shapes
+#
+#    ── WHY THESE AND NOT THE REASONER ──
+#
+#    The reasoner and the shapes catch DIFFERENT things, and almost
+#    everything the ontology actually gets wrong falls to the shapes.
+#    OWL is open-world: a role assignment with no actor, an obligation
+#    with no article, an exemption no practice reaches — none of these
+#    is an inconsistency. The reasoner reports a clean bill of health
+#    and the query silently returns fewer rows, or a row with a null in
+#    it. Every shape below is either a COMPLETENESS constraint of that
+#    kind, a CARDINALITY constraint that OWL could state but the
+#    ontology deliberately does not, or an INTEGRITY constraint over
+#    several nodes at once that OWL cannot state at all.
+#
+#    Three cases are worth naming, because they are the ones that
+#    justify building this at all:
+#
+#    (a) THE ORPHANED EXEMPTION. A prohibited practice returned with no
+#        exemption reads as UNCONDITIONALLY prohibited, so an exemption
+#        that exists but is attached to nothing does not appear as a
+#        gap — it appears as a stronger legal claim than the Act makes.
+#        shp:ExemptionShape walks aia:hasExemption BACKWARDS, which is
+#        an inverse-path constraint and has no OWL counterpart that
+#        raises anything.
+#
+#    (b) ELI'S FUNCTIONAL PROPERTIES. The reuse survey measured 13
+#        owl:FunctionalProperty declarations in ELI v1.4, two of which
+#        an article resource can plausibly carry: eli:type_subdivision
+#        and eli:in_force. A duplicate value on either does not raise
+#        an error under OWL — it infers the two values IDENTICAL, which
+#        is worse than an error because it is silent and it propagates.
+#        shp:ArticleShape turns that entailment into a report.
+#
+#    (c) THE ARTICLE 25 EVENT. Whether the assignment an event
+#        establishes is held by the same actor as the one it promotes,
+#        and concerns the same system, is the entire content of CQ4's
+#        join. It relates four nodes and cannot be stated in OWL
+#        without nominals and role composition; here it is three lines
+#        of SPARQL.
+#
+#    ── HOW THIS IS RUN, AND WHY INFERENCE IS OFF ──
+#
+#    scripts/check-shapes.py validates the core plus the worked example
+#    plus the four vendored imports, with INFERENCE DISABLED. That is
+#    load-bearing, not an economy. Several shapes below check that a
+#    value carries a type — aia:heldBy to an airo:AIOperator,
+#    aia:concernsSystem to an airo:AISystem. Those properties have
+#    rdfs:range, so under a reasoner the type is ENTAILED from the
+#    assertion itself and the constraint becomes vacuous: it would
+#    report conformance whatever the data said. Validating asserted
+#    triples is what makes them test anything.
+#
+#    The imports are nonetheless part of the data graph, because
+#    sh:class walks rdf:type/rdfs:subClassOf* and the axiom making
+#    eu-aiact:RiskLevelHigh an instance of eu-aiact:RiskLevel lives in
+#    the import, not here.
+#
+#    SHACL-SPARQL (sh:sparql) and one SHACL-AF SPARQL target are used.
+#    pyshacl needs advanced=True for the latter; the checker passes it.
+#    Every embedded query spells its IRIs in full rather than declaring
+#    sh:prefixes, since sh:prefixes must point at a node carrying
+#    sh:declare triples and a bare ontology IRI silently declares
+#    nothing.
+#################################################################
+
+shp: a owl:Ontology ;
+    dct:title       "EU AI Act Ontology — SHACL shapes"@en ;
+    dct:description """Validation shapes for AIA-Ont. Completeness, cardinality and
+        multi-node integrity constraints, which is the part of correctness an OWL reasoner
+        cannot decide."""@en ;
+    dct:creator     "Andreas Chari" ;
+    dct:created     "2026-09-26"^^xsd:date ;
+    dct:license     <https://creativecommons.org/licenses/by/4.0/> .
+
+#################################################################
+#    1. Role assignment — the reified ternary
+#
+#    Exactly one of each argument. A partial assignment is the failure
+#    mode the reification introduces: CQ3 and CQ4 both join through
+#    all three, so an assignment missing any one of them disappears
+#    from the answer without any error anywhere.
+#################################################################
+
+shp:RoleAssignmentShape a sh:NodeShape ;
+    sh:targetClass aia:RoleAssignment ;
+    sh:name "Role assignment" ;
+    sh:property [
+        sh:path aia:concernsSystem ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class airo:AISystem ;
+        sh:message "A role assignment must concern exactly one airo:AISystem (CQ3, CQ4 join through it)." ;
+    ] ;
+    sh:property [
+        sh:path aia:hasRole ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class aia:Role ;
+        sh:message "A role assignment must name exactly one aia:Role individual — not a class of actors." ;
+    ] ;
+    sh:property [
+        sh:path aia:heldBy ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class airo:AIOperator ;
+        sh:message "A role assignment must be held by exactly one airo:AIOperator (Art. 3(8))." ;
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ;
+    ] .
+
+#################################################################
+#    2. Obligation
+#
+#    aia:borneBy is single-valued by design: an obligation borne by two
+#    roles is two obligations, because Arts. 16 and 26 impose separate
+#    duties on provider and deployer even where the conduct required is
+#    similar. An obligation carries EXACTLY ONE of aia:borneBy and
+#    aia:borneOnTermination: a duty of the live role, or a residual duty
+#    of a role Art. 25(2) has ended, never both and never neither. aia:appliesToCategory is minCount 1 and NOT maxCount 1 —
+#    a duty may attach to more than one tier, and none in this model
+#    does yet.
+#################################################################
+
+shp:ObligationShape a sh:NodeShape ;
+    sh:targetClass aia:Obligation ;
+    sh:name "Obligation" ;
+    sh:xone (
+        [ sh:property [ sh:path aia:borneBy ; sh:minCount 1 ] ]
+        [ sh:property [ sh:path aia:borneOnTermination ; sh:minCount 1 ] ]
+    ) ;
+    sh:message "An obligation must be borne by a live role or on termination of one, not both and not neither." ;
+    sh:property [
+        sh:path aia:borneBy ; sh:maxCount 1 ;
+        sh:class aia:Role ;
+        sh:message "An obligation must be borne by exactly one role. Two roles means two obligations." ;
+    ] ;
+    sh:property [
+        sh:path aia:borneOnTermination ; sh:maxCount 1 ;
+        sh:class aia:Role ;
+        sh:message "A residual obligation must be borne on termination of exactly one role." ;
+    ] ;
+    sh:property [
+        sh:path aia:appliesToCategory ; sh:minCount 1 ;
+        sh:class eu-aiact-owl:RiskLevel ;
+        sh:message "An obligation must attach to at least one eu-aiact risk tier." ;
+    ] ;
+    sh:property [
+        sh:path aia:statedIn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class eli:LegalResourceSubdivision ;
+        sh:message "An obligation must be stated in exactly one provision." ;
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ;
+    ] ;
+    sh:property [
+        sh:path skos:definition ; sh:minCount 1 ;
+        sh:message "An obligation with no definition cannot be checked against the Official Journal." ;
+    ] .
+
+#################################################################
+#    3. Prohibited practice — including that it is not an artefact
+#
+#    The practice/artefact distinction is the substantive reason
+#    aia:ProhibitedPractice is not eu-aiact:ProhibitedAISystem. The two
+#    sh:not constraints below are what stops it eroding: a later editor
+#    who types a practice as a system, or as one of eu-aiact's
+#    prohibited-system classes, has collapsed the distinction, and
+#    nothing in OWL objects, since the AllDisjointClasses axiom names
+#    airo:AISystem but eu-aiact:ProhibitedAISystem descends from
+#    eu-aiact's own system class instead.
+#################################################################
+
+shp:ProhibitedPracticeShape a sh:NodeShape ;
+    sh:targetClass aia:ProhibitedPractice ;
+    sh:name "Prohibited practice" ;
+    sh:property [
+        sh:path aia:prohibitedBy ; sh:minCount 1 ;
+        sh:class eli:LegalResourceSubdivision ;
+        sh:message "A prohibited practice must name the provision that prohibits it." ;
+    ] ;
+    sh:property [
+        sh:path rdfs:seeAlso ; sh:minCount 1 ;
+        sh:message "A practice must cross-reference its eu-aiact:ProhibitedAISystem-A5-1-* term: the local term supplements the import, it does not replace it. Where eu-aiact has no term, as for Art. 5(1)(ba) and (bb), it cross-references the act that inserted the provision." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [ sh:path skos:definition ; sh:minCount 1 ] ;
+    sh:not [ sh:class airo:AISystem ] ;
+    sh:not [ sh:class eu-aiact-owl:ProhibitedAISystem ] ;
+    sh:message "Article 5 prohibits practices, not artefacts: a practice must not be typed as an AI system." .
+
+#################################################################
+#    4. Exemption — the orphan check
+#
+#    The inverse-path constraint is the reason this file exists. See
+#    the header, case (a).
+#################################################################
+
+shp:ExemptionShape a sh:NodeShape ;
+    sh:targetClass aia:Exemption ;
+    sh:name "Exemption" ;
+    sh:property [
+        sh:path [ sh:inversePath aia:hasExemption ] ; sh:minCount 1 ;
+        sh:message "ORPHANED EXEMPTION: no prohibited practice reaches this exemption, so no query will ever return it and the practice it belongs to reads as unconditionally prohibited." ;
+    ] ;
+    sh:property [
+        sh:path aia:providedFor ; sh:minCount 1 ;
+        sh:class eli:LegalResourceSubdivision ;
+        sh:message "An exemption must name the provision that provides for it." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [ sh:path skos:definition ; sh:minCount 1 ] .
+
+#################################################################
+#    5. Role reassignment, Article 25 — the multi-node integrity rule
+#
+#    Cardinality in core SHACL, then the three joins in SPARQL. The
+#    sequence path on aia:establishes is core SHACL and needs no
+#    SPARQL: the assignment an Art. 25 event establishes is always a
+#    PROVIDER assignment, because that is what Art. 25(1) provides.
+#################################################################
+
+shp:RoleReassignmentShape a sh:NodeShape ;
+    sh:targetClass aia:RoleReassignment ;
+    sh:name "Role reassignment (Art. 25)" ;
+    sh:property [
+        sh:path aia:concernsSystem ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class airo:AISystem ;
+    ] ;
+    sh:property [
+        sh:path aia:promotes ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class aia:RoleAssignment ;
+        sh:message "An Art. 25 event must promote exactly one pre-existing assignment." ;
+    ] ;
+    sh:property [
+        sh:path aia:establishes ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class aia:RoleAssignment ;
+        sh:message "An Art. 25 event must establish exactly one new assignment." ;
+    ] ;
+    sh:property [
+        sh:path aia:triggeredBy ; sh:minCount 1 ;
+        sh:class aia:ReassignmentCondition ;
+        sh:message "An Art. 25 event must name at least one of the three circumstances of Art. 25(1)." ;
+    ] ;
+    sh:property [
+        sh:path aia:terminates ; sh:maxCount 1 ;
+        sh:class aia:RoleAssignment ;
+        sh:message "At most one initial-provider assignment is terminated (Art. 25(2))." ;
+    ] ;
+    sh:property [
+        sh:path aia:statedIn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class eli:LegalResourceSubdivision ;
+    ] ;
+    sh:property [
+        sh:path ( aia:establishes aia:hasRole ) ; sh:hasValue aia:Provider ;
+        sh:message "The assignment an Art. 25 event establishes must be a PROVIDER assignment: Art. 25(1) makes the party a provider and nothing else." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [ sh:path skos:definition ; sh:minCount 1 ] ;
+
+    # The same party changed standing — not one party gaining a role while
+    # another lost one. This is exactly what CQ4 encodes by binding aia:heldBy
+    # to one ?actor across both assignments, and it is unstatable in OWL.
+    sh:sparql [
+        sh:message "The assignment established must be held by the SAME actor as the assignment promoted: Art. 25(1) changes one party's standing." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://w3id.org/aia-ont#promotes>    ?prior .
+              $this <https://w3id.org/aia-ont#establishes> ?new .
+              ?prior <https://w3id.org/aia-ont#heldBy> ?a .
+              ?new   <https://w3id.org/aia-ont#heldBy> ?b .
+              FILTER (?a != ?b)
+            }""" ;
+    ] ;
+
+    # Every assignment the event touches must be about the event's system.
+    sh:sparql [
+        sh:message "An assignment promoted, established or terminated by an Art. 25 event must concern the same AI system as the event: Art. 25 operates on one specific system." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://w3id.org/aia-ont#concernsSystem> ?sys .
+              $this ?rel ?assignment .
+              FILTER (?rel IN (<https://w3id.org/aia-ont#promotes>,
+                               <https://w3id.org/aia-ont#establishes>,
+                               <https://w3id.org/aia-ont#terminates>))
+              ?assignment <https://w3id.org/aia-ont#concernsSystem> ?other .
+              FILTER (?sys != ?other)
+            }""" ;
+    ] ;
+
+    # The prior role must not already be Provider: Art. 25(1) promotes a
+    # distributor, importer, deployer or other third party, and an event that
+    # promoted a provider to provider would be vacuous.
+    sh:sparql [
+        sh:message "The assignment promoted must not already be a provider assignment: Art. 25(1) applies to a distributor, importer, deployer or other third party." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://w3id.org/aia-ont#promotes> ?prior .
+              ?prior <https://w3id.org/aia-ont#hasRole> <https://w3id.org/aia-ont#Provider> .
+            }""" ;
+    ] .
+
+# Art. 25(2) ends the INITIAL PROVIDER's assignment. Separate shape rather than
+# a property on the one above, because aia:terminates is optional and sh:hasValue
+# on an absent path fails: this targets only the events that have one.
+shp:TerminatedAssignmentShape a sh:NodeShape ;
+    sh:targetSubjectsOf aia:terminates ;
+    sh:name "Terminated assignment (Art. 25(2))" ;
+    sh:property [
+        sh:path ( aia:terminates aia:hasRole ) ; sh:hasValue aia:Provider ;
+        sh:message "Art. 25(2) provides that the INITIAL PROVIDER ceases to be the provider; the assignment terminated must therefore be a provider assignment." ;
+    ] .
+
+#################################################################
+#    6. AI system
+#
+#    One tier per system. The high-risk ground check is a WARNING and
+#    not a violation, deliberately and for the same reason the classification
+#    rule is one-directional: Art. 6(3) lets an Annex III system escape
+#    the category, and Art. 6 is not the only way the Act attaches it,
+#    so a high-risk system with no recorded ground is UNDER-DESCRIBED
+#    rather than wrong. Reporting it as a violation would contradict
+#    the decision the ontology took.
+#################################################################
+
+shp:AISystemShape a sh:NodeShape ;
+    sh:targetClass airo:AISystem ;
+    sh:name "AI system" ;
+    sh:property [
+        sh:path aia:hasRiskCategory ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class eu-aiact-owl:RiskLevel ;
+        sh:message "An AI system must fall into exactly one risk tier of the Act." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [
+        sh:path aia:classifiedOnGround ; sh:class aia:ClassificationGround ;
+    ] .
+
+# A system asserted high-risk whose only Annex ground is derogated under Art. 6(3)
+# contradicts its own record: the ground says the derogation applies, the tier
+# says it does not. An Annex I ground alongside is fine (Art. 43(3)).
+shp:DerogatedNotHighRiskShape a sh:NodeShape ;
+    sh:targetClass airo:AISystem ;
+    sh:name "Derogated system not recorded as high-risk" ;
+    sh:sparql [
+        sh:message "High-risk tier asserted, but the only Annex ground is an Art. 6(3) derogation, which takes the system out of high risk." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://w3id.org/aia-ont#hasRiskCategory>
+                    <https://w3id.org/dpv/legal/eu/aiact/owl#RiskLevelHigh> ;
+                    <https://w3id.org/aia-ont#classifiedOnGround> ?d .
+              ?d a <https://w3id.org/aia-ont#DerogatedAnnexIIIGround> .
+              FILTER NOT EXISTS {
+                $this <https://w3id.org/aia-ont#classifiedOnGround> ?g .
+                { ?g a <https://w3id.org/aia-ont#AnnexIIIGround> }
+                UNION { ?g a <https://w3id.org/aia-ont#AnnexIGround> }
+              }
+            }""" ;
+    ] .
+
+# SEPARATE SHAPE, AND THE SEPARATION IS THE POINT. sh:severity is a property of
+# a SHAPE and not of an individual constraint, so a sh:severity written inside
+# the sh:sparql node above would be ignored and this would report as a
+# violation -- which is exactly what it must not do.
+shp:HighRiskGroundRecordedShape a sh:NodeShape ;
+    sh:targetClass airo:AISystem ;
+    sh:name "High-risk classification ground recorded" ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "High-risk with no recorded classification ground: under-described rather than wrong (Art. 6 is not the only route to the category), but no Art. 6 route is recoverable from this system." ;
+        sh:select """
+            SELECT $this WHERE {
+              $this <https://w3id.org/aia-ont#hasRiskCategory>
+                    <https://w3id.org/dpv/legal/eu/aiact/owl#RiskLevelHigh> .
+              FILTER NOT EXISTS { $this <https://w3id.org/aia-ont#classifiedOnGround> ?g }
+            }""" ;
+    ] .
+
+#################################################################
+#    7. Classification ground
+#
+#    A bare aia:ClassificationGround names no Art. 6 route and so
+#    cannot classify anything: aia:HighRiskByGround is defined over the
+#    two Annex subclasses, not over the parent. A derogated Annex III
+#    ground is a valid ground that deliberately classifies nothing. This is the shape that
+#    catches a ground which looks fine to the reasoner and does nothing.
+#################################################################
+
+shp:ClassificationGroundShape a sh:NodeShape ;
+    sh:targetClass aia:ClassificationGround ;
+    sh:name "Classification ground" ;
+    sh:or (
+        [ sh:class aia:PurposeGround ]
+        [ sh:class aia:AnnexIIIGround ]
+        [ sh:class aia:AnnexIGround ]
+        [ sh:class aia:DerogatedAnnexIIIGround ]
+    ) ;
+    sh:message "A ground must be typed as a purpose, Annex III, derogated Annex III or Annex I ground; the bare parent class classifies nothing." ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [ sh:path skos:definition ; sh:minCount 1 ] .
+
+#################################################################
+#    8. Oversight assignment
+#
+#    The sh:or reproduces CQ5's VALUES clause as a constraint, so data
+#    that the query would silently drop is reported instead. The
+#    org:Organization requirement is the decision the worked example
+#    took; recording it here means it cannot be quietly dropped without
+#    the shapes failing.
+#################################################################
+
+shp:OversightAssignmentShape a sh:NodeShape ;
+    sh:targetClass aia:OversightAssignment ;
+    sh:name "Oversight assignment" ;
+    sh:property [
+        sh:path aia:oversees ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class aia:Obligation ;
+        sh:message "An oversight assignment must supervise exactly one obligation." ;
+    ] ;
+    sh:property [
+        sh:path aia:assignedTo ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:class org:Organization ;
+        sh:message "The supervising authority must be typed org:Organization: CQ5 binds it and will otherwise drop the row." ;
+    ] ;
+    sh:property [
+        sh:path aia:assignedTo ;
+        sh:or (
+            [ sh:class eu-aiact-owl:NationalCompetentAuthority ]
+            [ sh:class eu-aiact-owl:MarketSurveillanceAuthority ]
+            [ sh:class eu-aiact-owl:NotifiedBody ]
+            [ sh:class eu-aiact-owl:AIOffice ]
+        ) ;
+        sh:message "The supervising body must be one of the four authority kinds CQ5 admits." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] .
+
+#################################################################
+#    9. Conformity assessment route
+#
+#    sh:in over three provisions, because Art. 43 offers exactly three
+#    procedures: Annex VI internal control and Annex VII quality
+#    management for Annex III systems (Art. 43(1)-(2)), and the procedure
+#    of the relevant Annex I, Section A legislation, stated in Art. 43(3)
+#    itself. A route stated in any other provision is not a route in the
+#    sense this class means.
+#################################################################
+
+shp:ConformityAssessmentRouteShape a sh:NodeShape ;
+    sh:targetClass aia:ConformityAssessmentRoute ;
+    sh:name "Conformity assessment route" ;
+    sh:property [
+        sh:path aia:appliesToObligation ; sh:minCount 1 ;
+        sh:class aia:Obligation ;
+        sh:message "A route must govern the discharge of at least one obligation." ;
+    ] ;
+    sh:property [
+        sh:path aia:statedIn ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:in ( aia:annex_VI aia:annex_VII aia:art_43 ) ;
+        sh:message "Art. 43 offers exactly three procedures: the Annex VI internal-control route, the Annex VII quality-management route, and the Annex I, Section A sectoral procedure of Art. 43(3)." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [ sh:path skos:definition ; sh:minCount 1 ] .
+
+#################################################################
+#    10. Role — the reification commitment, enforced
+#
+#    aia:Provider is an INDIVIDUAL of aia:Role. If it were ever also
+#    declared an owl:Class it would become a class of actors, which is
+#    the design the whole model rejects, and OWL 2 DL would tolerate it
+#    as punning without complaint.
+#################################################################
+
+shp:RoleShape a sh:NodeShape ;
+    sh:targetClass aia:Role ;
+    sh:name "Role" ;
+    sh:not [ sh:property [ sh:path rdf:type ; sh:hasValue owl:Class ] ] ;
+    sh:message "A role must not also be declared an owl:Class: roles are individuals of aia:Role, never classes of actors. Punning them would make the Art. 25 case inconsistent under disjoint role classes." ;
+    sh:property [
+        sh:path aia:definedIn ; sh:minCount 1 ;
+        sh:class eli:LegalResourceSubdivision ;
+        sh:message "A role must cite the provision that defines it (Art. 3)." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] ;
+    sh:property [ sh:path skos:definition ; sh:minCount 1 ] .
+
+#################################################################
+#    11. Actor — the same commitment from the other side
+#################################################################
+
+shp:ActorShape a sh:NodeShape ;
+    sh:targetClass airo:AIOperator ;
+    sh:name "Actor" ;
+    sh:not [ sh:class aia:Role ] ;
+    sh:not [ sh:class airo:AISystem ] ;
+    sh:message "An actor is not a role and not a system: the role it holds is reached through an aia:RoleAssignment." ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] .
+
+#################################################################
+#    12. Article resources — and ELI's functional properties
+#
+#    See the header, case (b). eli:number and eli:is_part_of are
+#    constrained to one value each for the ordinary reason; the two
+#    maxCount 1 constraints on eli:type_subdivision and eli:in_force
+#    are there because those properties are FUNCTIONAL in ELI v1.4, so
+#    a second value is not an error but a silent owl:sameAs.
+#################################################################
+
+shp:ArticleShape a sh:NodeShape ;
+    sh:targetClass eli:LegalResourceSubdivision ;
+    sh:name "Article or annex resource" ;
+    sh:property [
+        sh:path eli:number ; sh:minCount 1 ; sh:maxCount 1 ; sh:datatype xsd:string ;
+        sh:message "An article resource carries exactly one eli:number, and ELI types it xsd:string — so SPARQL ORDER BY on it is lexicographic." ;
+    ] ;
+    sh:property [
+        sh:path eli:is_part_of ; sh:minCount 1 ; sh:maxCount 1 ;
+        sh:hasValue <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+        sh:message "Every article resource must be eli:is_part_of the Act's own ELI URI: that link is what makes the locally minted subdivision addressable." ;
+    ] ;
+    sh:property [
+        sh:path eli:type_subdivision ; sh:maxCount 1 ;
+        sh:message "eli:type_subdivision is an owl:FunctionalProperty in ELI v1.4: a second value does not raise an error, it silently infers the two values identical." ;
+    ] ;
+    sh:property [
+        sh:path eli:in_force ; sh:maxCount 1 ;
+        sh:message "eli:in_force is an owl:FunctionalProperty in ELI v1.4: same silent-sameAs hazard." ;
+    ] ;
+    sh:property [ sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ] .
+
+#################################################################
+#    13. Annotation completeness over every locally minted term
+#
+#    A SPARQL-based target (SHACL-AF), because the focus set is "every
+#    IRI in the aia: namespace declared as a class or an object
+#    property" and no sh:targetClass describes that. The 55 external
+#    stubs are excluded by namespace, which is correct: a stub asserts
+#    only that the IRI names a class, and labelling someone else's term
+#    from here would be worse than leaving it bare.
+#
+#    Individuals are not targeted here — each individual kind has its
+#    own shape above, and the article resources legitimately carry
+#    prefLabel without a definition.
+#################################################################
+
+shp:LocalTermAnnotationShape a sh:NodeShape ;
+    sh:name "Local term annotation" ;
+    sh:target [
+        a sh:SPARQLTarget ;
+        sh:select """
+            SELECT ?this WHERE {
+              { ?this a <http://www.w3.org/2002/07/owl#Class> }
+              UNION
+              { ?this a <http://www.w3.org/2002/07/owl#ObjectProperty> }
+              FILTER (isIRI(?this) && STRSTARTS(STR(?this), "https://w3id.org/aia-ont#"))
+            }""" ;
+    ] ;
+    sh:property [
+        sh:path skos:prefLabel ; sh:minCount 1 ; sh:uniqueLang true ;
+        sh:message "Every locally minted class and property carries a skos:prefLabel. The specification asks for annotation, and an unlabelled term is an unannotated one." ;
+    ] ;
+    sh:property [
+        sh:path skos:definition ; sh:minCount 1 ;
+        sh:message "Every locally minted class and property carries a skos:definition." ;
+    ] .

@@ -1,0 +1,743 @@
+@prefix aia:          <https://w3id.org/aia-ont#> .
+@prefix owl:          <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:         <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:          <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:          <http://purl.org/dc/terms/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+@prefix eli:          <http://data.europa.eu/eli/ontology#> .
+@prefix airo:         <https://w3id.org/airo#> .
+@prefix eu-aiact-owl: <https://w3id.org/dpv/legal/eu/aiact/owl#> .
+@prefix dpv-owl:      <https://w3id.org/dpv/owl#> .
+@prefix org:          <http://www.w3.org/ns/org#> .
+
+#################################################################
+#    AIA-Ont worked example
+#
+#    SEPARATE FILE, IMPORTING THE CORE. The core ontology carries no
+#    instance data; anything that wants the example loads THIS file,
+#    which imports aia-ont.ttl through catalog-v001.xml. The reason is
+#    the same one that keeps the alignment module out of the core: a
+#    reviewer loading aia-ont.ttl is entitled to the model without a
+#    test fixture in it, and the fixture is the thing most likely to
+#    change.
+#
+#    NAMESPACE. The individuals below are minted in aia:, not in a
+#    separate example namespace, because ../queries/ already names
+#    aia:ExampleRecruitmentScreeningSystem in two places -- the CQ1
+#    reasoner ASK and CQ3's VALUES clause -- and those queries are the
+#    specification this file is built to satisfy. Every example term
+#    carries the Example/ra_/rr_/rc_/g_/oa_/route_ prefix, so the
+#    fixture is separable from the model by name as well as by file.
+#
+#    ── WHAT THIS FILE HAS TO DEMONSTRATE, AND WHY EACH PIECE IS HERE ──
+#
+#    (1) ALL FOUR RISK TIERS. Decision 2 in ../reports/STATUS.md brought
+#        Article 50's tier INTO scope on the argument that "AI system
+#        categories" is a named requirement of the task specification
+#        and eu-aiact:RiskLevelTransparencyRequired is the fourth tier.
+#        That decision is recorded in prose; without a system at each
+#        tier it is not DEMONSTRATED. Seven systems cover Prohibited,
+#        High (both Article 6 routes), Transparency-required and
+#        Minimal.
+#
+#    (2) THE DUAL-ROLE ACTOR. An actor holding two roles for ONE system
+#        concurrently is the case that makes role-as-class inconsistent
+#        and is therefore the whole justification for reifying role
+#        assignment. It appears twice and in two different forms:
+#        NorthBorough Council holds Deployer and Provider for the
+#        recruitment system after Article 25(1)(b) (the Article 25
+#        case, which CQ3 is documented to return once per role), and
+#        EuroDistribution holds Distributor and Importer for the same
+#        system (Recital 83's own example, which CQ3's FILTER excludes
+#        and which is here to show the filter working).
+#
+#    (3) ALL THREE LIMBS OF ARTICLE 25(1). CQ4's note in
+#        ../reports/competency-questions.md says the expected results
+#        correspond to the three circumstances of Article 25(1), so all
+#        three are instantiated, on three different systems and from
+#        three different prior roles -- deployer, importer, distributor.
+#
+#    (4) A NEGATIVE CONTROL ON THE CLASSIFICATION RULE. The chatbot
+#        carries a purpose ground and nothing else. Under the classification
+#        rule it must NOT be classified high-risk: intended purpose is
+#        how one determines whether a system falls within an Annex III
+#        use case, not an independent route to the category. If a
+#        future edit made aia:PurposeGround a disjunct of
+#        aia:HighRiskByGround, this system is what would catch it.
+#
+#    (5) THE ARTICLE 25(1)(c) DOUBLE TYPING. The disjointness axiom in
+#        the core deliberately omits aia:ReassignmentCondition, on the
+#        ground that Article 25(1)(c) is simultaneously a reassignment
+#        condition and a classification ground. That claim is asserted
+#        in a comment and was, until this file, never exercised:
+#        aia:rc_art25_1_c_purpose_modification is typed as both and is
+#        used in both positions.
+#
+#    (6) A NEGATIVE CONTROL ON THE ARTICLE 6(3) DEROGATION. The CV
+#        formatter falls within the Annex III, point 4(a) recruitment use
+#        case but only performs a narrow procedural task and profiles no
+#        one, so Art. 6(3) takes it out of high risk. Its ground is an
+#        aia:DerogatedAnnexIIIGround, and it must NOT be classified
+#        high-risk.
+#
+#    NOT DEMONSTRATED, DELIBERATELY. There is no deployer for the
+#    imaging triage or workforce systems, no natural person as an actor, and
+#    no AI Office oversight assignment -- the last because the AI
+#    Office's competence over AI systems under Art. 75(1) reaches only
+#    systems based on a general-purpose AI model developed by the same
+#    provider, and systems that are or are integrated into a very large
+#    online platform or search engine. No system here is either. CQ5's
+#    AIOffice VALUES row is therefore expected to stay unbound, and that
+#    is a property of the fixture rather than a gap in the model.
+#################################################################
+
+<https://w3id.org/aia-ont/example>
+    a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/aia-ont/example/0.1> ;
+    owl:versionInfo "0.1" ;
+    dct:title       "EU AI Act Ontology — worked example"@en ;
+    dct:description """Instance data for AIA-Ont: seven AI systems across all four risk
+        tiers, six actors, three authorities, ten role assignments, the three Article 25(1)
+        reassignments, and the oversight and conformity-route bindings CQ5 needs. Held apart
+        from the core so that loading the core carries no fixture."""@en ;
+    dct:creator     "Andreas Chari" ;
+    dct:created     "2026-09-26"^^xsd:date ;
+    dct:license     <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports     <https://w3id.org/aia-ont> ;
+    rdfs:comment    """Resolved offline through catalog-v001.xml. Every organisation,
+        system and authority named here is fictitious; the articles, annexes and tiers they
+        are attached to are not."""@en .
+
+#################################################################
+#    One stub, and the decision it settles
+#
+#    CQ5 binds  ?authority a org:Organization  and the alignment
+#    module records in terms that nothing supplies it: "Whether
+#    org:Organization should be the type of the authorities is a SECOND
+#    decision, deferred to the authority module; CQ5 assumes it and
+#    nothing here supplies it, so CQ5's ?authority pattern will not
+#    bind on this module alone."
+#
+#    TAKEN HERE: the authorities ARE typed org:Organization. The
+#    argument for it is thin but sufficient -- CQ5's query is the
+#    specification, an authority is an organisation, and the reuse
+#    survey already selected ORG for exactly this job (see CQ3 and CQ5
+#    under "Reuse" in ../reports/competency-questions.md).
+#
+#    The argument against was the ORG hazard, and it does not reach
+#    this use: what makes ORG dangerous is that org:organization has
+#    range org:Organization while it and org:member are FUNCTIONAL, so
+#    subclassing org:Membership would identify two systems as one. That
+#    is a hazard of ORG's PROPERTIES. No ORG property is used here and
+#    none is asserted; only the class is, on individuals, which brings
+#    no functional property into play.
+#
+#    Declaration only, exactly as the core's external term stubs and the alignment
+#    module's stubs are declaration only. ORG remains aligned and not
+#    imported, so org:Organization would otherwise be an undeclared IRI
+#    in class position and the file would fall outside OWL 2 DL.
+#################################################################
+
+org:Organization a owl:Class .
+
+#################################################################
+#    AI systems, one per demonstration
+#
+#    Each is an airo:AISystem -- the reuse decisions forbid a local
+#    system class -- with exactly one aia:hasRiskCategory. The tier
+#    values are eu-aiact terms; the grounds are local, because the rule
+#    connecting a ground to a tier is stated in axioms by no surveyed
+#    vocabulary and is the classification rule's defined class.
+#
+#    NOTE WHAT IS NOT ASSERTED. No system is typed with a
+#    eu-aiact:HighRiskAISystem-AnnexIII-* or -AnnexI-* class, although
+#    those classes exist and would be true of two of them. Typing them
+#    would make CQ1's reasoner ASK succeed by re-assertion --
+#    -AnnexIII-4-a is already a subclass of HighRiskAISystem-A6-2 --
+#    and the ASK would then test nothing. The Annex reference is
+#    carried by rdfs:seeAlso on the GROUND instead, so the ASK
+#    succeeds only through aia:HighRiskByGround, which is the axiom
+#    under test.
+#################################################################
+
+### High-risk, Article 6(2) / Annex III — the system every CQ names ###
+
+aia:ExampleRecruitmentScreeningSystem a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:classifiedOnGround aia:g_recruitment_annexIII_4a ;
+    skos:prefLabel "TalentFlow CV Screening (example system)"@en ;
+    skos:definition """An AI system placed on the Union market to analyse and filter job
+        applications and to rank candidates for interview, deployed by a local authority in
+        its own recruitment."""@en ;
+    rdfs:comment """The system named in CQ1's reasoner ASK and in CQ3's VALUES clause.
+        High-risk by the Annex III route, and after Art. 25(1)(b) the subject of the
+        dual-role case."""@en .
+
+### High-risk, Article 6(1) / Annex I, Section A — the second route #
+
+aia:ExampleMedicalImagingTriageSoftware a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:classifiedOnGround aia:g_medical_annexI_11 ;
+    skos:prefLabel "Helvetia MedTech Imaging Triage (example system)"@en ;
+    skos:definition """An AI system that is itself a medical device: software that
+        analyses chest radiographs and flags suspected findings for priority review by a
+        radiologist, classified as a class IIa device under Regulation (EU) 2017/745 and
+        therefore required to undergo third-party conformity assessment by a notified
+        body."""@en ;
+    rdfs:comment """Present so that the second disjunct of aia:HighRiskByGround is
+        exercised by data and not only by the reasoner check's inline fixture.
+
+        WHY A SECTION A PRODUCT. Annex I, Section A lists the legislation to which the
+        Act's high-risk requirements and obligations apply in full; for Section B
+        products Art. 2(2) applies only Art. 6(1), Art. 60a and Arts. 102 to 112. This
+        system bears Art. 16 duties and undergoes an Art. 25 reassignment, so it must be a
+        Section A product. Machinery is NOT one: Annex I lists the Machinery Regulation
+        (EU) 2023/1230 in Section B, point 21. The notified body's assessment is required
+        for health risks, which is what Art. 6(1c) requires of the third-party
+        assessment in Art. 6(1)(b)."""@en .
+
+### High-risk by Article 25(1)(c) purpose modification #############
+
+aia:ExampleWorkforceAnalyticsSystem a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:classifiedOnGround aia:rc_art25_1_c_purpose_modification ;
+    skos:prefLabel "PeopleMetrics Workforce Analytics (example system)"@en ;
+    skos:definition """An AI system placed on the market for aggregate workforce reporting
+        and not classified as high-risk, whose intended purpose a distributor then modified
+        to the evaluation of individual employees for promotion, bringing it within Annex
+        III, point 4(b)."""@en ;
+    rdfs:comment """Art. 25(1)(c). Its classification ground IS the reassignment condition
+        -- one individual in both positions -- which is why aia:ReassignmentCondition is
+        omitted from the core's owl:AllDisjointClasses axiom."""@en .
+
+### Transparency-required, Article 50 — decision 2's tier ##########
+
+aia:ExampleCustomerServiceChatbot a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelTransparencyRequired ;
+    aia:classifiedOnGround aia:g_chatbot_purpose ;
+    skos:prefLabel "EuroDistribution Support Assistant (example system)"@en ;
+    skos:definition """An AI system intended to interact directly with natural persons in
+        customer support, neither prohibited nor high-risk, and subject to the transparency
+        requirement that the persons concerned be informed they are interacting with an AI
+        system."""@en ;
+    rdfs:comment """The system that discharges decision 2 in ../reports/STATUS.md: the Art. 50 tier
+        is IN scope, its obligations are OUT, so this system has a tier and an article and
+        no obligations hang off it. ALSO THE NEGATIVE CONTROL on the classification rule -- a
+        purpose ground alone must not yield high-risk."""@en .
+
+### Prohibited, Article 5(1)(f) ####################################
+
+aia:ExampleWorkplaceEmotionRecognitionSystem a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelProhibited ;
+    rdfs:seeAlso aia:pp_art5_1_f ;
+    skos:prefLabel "Sentio Workplace Affect Monitor (example system)"@en ;
+    skos:definition """An AI system that infers the emotions of employees from video of
+        their workstations, outside any medical or safety purpose."""@en ;
+    rdfs:comment """No aia:classifiedOnGround: the ground hierarchy is Art. 6 apparatus and
+        Art. 5 is not a classification route. The link to the practice is rdfs:seeAlso and
+        NOT an object property, deliberately: Art. 5 prohibits the practice of placing on
+        the market, putting into service or using, not the artefact, and a
+        system-to-practice property would re-attach the prohibition to the artefact --
+        which is the distinction aia:ProhibitedPractice exists to preserve. The tier is
+        nonetheless a property of the system, because eu-aiact models it that way."""@en .
+
+### Minimal, Annex III area but derogated under Article 6(3) #######
+
+aia:ExampleCVFormattingTool a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelMinimal ;
+    aia:classifiedOnGround aia:g_cvformat_annexIII_4a_derogated ;
+    skos:prefLabel "HireDesk CV Formatter (example system)"@en ;
+    skos:definition """An AI system that converts job applications received in varied formats
+        into a single standard layout for recruiters, without scoring, ranking or filtering
+        candidates."""@en ;
+    rdfs:comment """Used in recruitment, the area of Annex III, point 4(a), but Art. 6(3)(a)
+        takes it out of high risk: it performs only a narrow procedural task, and it does not
+        profile natural persons. THE NEGATIVE CONTROL on the derogation -- a derogated Annex
+        III ground must not yield high-risk."""@en .
+
+### Minimal — the residual tier ####################################
+
+aia:ExampleSpamFilter a owl:NamedIndividual , airo:AISystem ;
+    aia:hasRiskCategory eu-aiact-owl:RiskLevelMinimal ;
+    skos:prefLabel "NorthBorough Mail Filter (example system)"@en ;
+    skos:definition """An AI system used to classify inbound electronic mail as unsolicited,
+        falling outside the prohibited, high-risk and transparency-required tiers."""@en ;
+    rdfs:comment """Carries no aia:definedIn through its tier, because no article of the
+        Act establishes a minimal-risk tier -- it is the residual category. CQ1's ?article
+        column is therefore expected to be unbound on this row, and that absence is an
+        assertion about the Act rather than a missing annotation."""@en .
+
+#################################################################
+#    Classification grounds
+#
+#    Each carries rdfs:seeAlso to the eu-aiact Annex class it
+#    instantiates, following the convention the Art. 5 practices use.
+#    seeAlso and not rdf:type: see the note on the systems above.
+#################################################################
+
+aia:g_recruitment_annexIII_4a a owl:NamedIndividual ,
+        aia:AnnexIIIGround , aia:PurposeGround ;
+    rdfs:seeAlso eu-aiact-owl:HighRiskAISystem-AnnexIII-4-a ;
+    skos:prefLabel "Intended for the recruitment and selection of natural persons (Annex III, 4(a))"@en ;
+    skos:definition """The system's intended purpose is to analyse and filter job
+        applications and evaluate candidates, which falls within the Annex III, point 4(a)
+        use case."""@en ;
+    rdfs:comment """DOUBLE-TYPED ON PURPOSE. Art. 6(2) makes a system high-risk where its
+        intended purpose falls within an Annex III use case, so one ground is both a
+        purpose ground and an Annex III ground. This is why the three ground classes are
+        not pairwise disjoint, and why CQ1 returns this ground twice -- once per ground
+        type. That is the documented intended behaviour, not duplication."""@en .
+
+aia:g_medical_annexI_11 a owl:NamedIndividual , aia:AnnexIGround ;
+    rdfs:seeAlso eu-aiact-owl:HighRiskAISystem-AnnexI-11 ;
+    skos:prefLabel "Medical device requiring third-party conformity assessment (Annex I, Section A, point 11)"@en ;
+    skos:definition """The system is itself a product covered by Regulation (EU) 2017/745
+        on medical devices, listed in Annex I, Section A, point 11, and that product is
+        required to undergo a third-party conformity assessment on account of risks to
+        health and safety."""@en ;
+    rdfs:comment """Art. 6(1)(a)-(b) and 6(1c); Annex I, Section A, point 11, verified
+        against the Official Journal. Art. 6(1)(a)'s "itself a product" limb, so the
+        safety-component tests of Art. 3(14) and Art. 6(1a)-(1b) are not engaged."""@en .
+
+
+aia:g_cvformat_annexIII_4a_derogated a owl:NamedIndividual ,
+        aia:DerogatedAnnexIIIGround , aia:PurposeGround ;
+    rdfs:seeAlso eu-aiact-owl:HighRiskAISystem-AnnexIII-4-a ;
+    skos:prefLabel "Recruitment use case derogated as a narrow procedural task (Annex III, 4(a); Art. 6(3)(a))"@en ;
+    skos:definition """The system's intended purpose lies within the Annex III, point 4(a)
+        recruitment use case, but it is intended only to perform a narrow procedural task and
+        does not profile natural persons, so Article 6(3) excludes it from high risk."""@en ;
+    rdfs:comment """Art. 6(3)(a), verified against the Official Journal. Double-typed as a
+        purpose ground, as the recruitment system's Annex III ground is."""@en .
+
+aia:g_chatbot_purpose a owl:NamedIndividual , aia:PurposeGround ;
+    rdfs:seeAlso eu-aiact-owl:IntendedPurpose ;
+    skos:prefLabel "Intended for direct interaction with natural persons (Art. 50(1))"@en ;
+    skos:definition """The system's intended purpose is direct interaction with natural
+        persons, which engages the Art. 50 transparency requirement and falls within no
+        Annex III use case."""@en ;
+    rdfs:comment """A PurposeGround and nothing else, which is what makes it the negative
+        control: aia:HighRiskByGround has no purpose disjunct, so this ground must not
+        classify its system as high-risk."""@en .
+
+#################################################################
+#    Actors
+#
+#    airo:AIOperator, which AIRO sources to Art. 3(8) and which is
+#    therefore exactly the set of parties that can hold a role.
+#    org:Organization is asserted here too, so the actors and the
+#    authorities carry the same organisational type; CQ3 does not
+#    require it and CQ5 does.
+#
+#    No actor is typed aia:Provider or aia:Deployer. Those are
+#    INDIVIDUALS of aia:Role, reached through an aia:RoleAssignment,
+#    and asserting one as a type would be the modelling error the
+#    reification exists to prevent -- the core's disjointness axiom
+#    catches it, and the reasoner check has that negative control.
+#################################################################
+
+aia:ExampleActorTalentFlowGmbH a owl:NamedIndividual , airo:AIOperator , org:Organization ;
+    skos:prefLabel "TalentFlow GmbH (example actor)"@en ;
+    skos:definition """The undertaking that developed the recruitment screening system and
+        placed it on the Union market under its own name."""@en ;
+    rdfs:comment "Initial provider of the recruitment system; ceases to be so under Art. 25(2)."@en .
+
+aia:ExampleActorNorthBoroughCouncil a owl:NamedIndividual , airo:AIOperator , org:Organization ;
+    skos:prefLabel "North Borough Council (example actor)"@en ;
+    skos:definition """A public authority using the recruitment screening system under its
+        own authority in its own recruitment, which then substantially modified it."""@en ;
+    rdfs:comment """THE DUAL-ROLE ACTOR. Holds Deployer and Provider for the SAME system
+        concurrently after Art. 25(1)(b). Under role-as-class with disjoint role classes
+        this single actor would make the ontology inconsistent; under reified assignments it
+        is two assignments and CQ3 returns it once per role."""@en .
+
+aia:ExampleActorEuroDistributionBV a owl:NamedIndividual , airo:AIOperator , org:Organization ;
+    skos:prefLabel "EuroDistribution BV (example actor)"@en ;
+    skos:definition """An undertaking in the supply chain that both imported the recruitment
+        screening system into the Union and made it available on the market."""@en ;
+    rdfs:comment """Recital 83's own example -- an operator acting as distributor and
+        importer at once, bearing each set of duties cumulatively. Holds two concurrent
+        assignments for one system, neither of which CQ3's FILTER admits, so this actor is
+        what shows the filter is doing work."""@en .
+
+aia:ExampleActorHelvetiaMedTechAG a owl:NamedIndividual , airo:AIOperator , org:Organization ;
+    skos:prefLabel "Helvetia MedTech AG (example actor)"@en ;
+    skos:definition """A third-country undertaking that developed the imaging triage
+        software and placed it on the Union market under its own name."""@en ;
+    rdfs:comment """Initial provider of the imaging triage software; ceases to be so under
+        Art. 25(2), and bears the residual cooperation duties of Art. 25(2) thereafter."""@en .
+
+aia:ExampleActorRhineImportsGmbH a owl:NamedIndividual , airo:AIOperator , org:Organization ;
+    skos:prefLabel "Rhine Imports GmbH (example actor)"@en ;
+    skos:definition """An undertaking established in the Union that placed the imaging
+        triage software on the market and then affixed its own trade mark to it."""@en ;
+    rdfs:comment "Importer promoted to provider under Art. 25(1)(a)."@en .
+
+aia:ExampleActorPeopleMetricsLtd a owl:NamedIndividual , airo:AIOperator , org:Organization ;
+    skos:prefLabel "PeopleMetrics Ltd (example actor)"@en ;
+    skos:definition """An undertaking that made the workforce analytics system available on
+        the Union market and modified its intended purpose."""@en ;
+    rdfs:comment "Distributor promoted to provider under Art. 25(1)(c)."@en .
+
+#################################################################
+#    Role assignments
+#
+#    Ten, each relating exactly one actor, one role and one system.
+#    The pattern is the substance of the model: an actor's role holds
+#    relative to one system and is contingent on conduct, so it cannot
+#    be class membership.
+#################################################################
+
+### The recruitment system ########################################
+
+aia:ra_recruitment_talentflow_provider a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleRecruitmentScreeningSystem ;
+    aia:hasRole        aia:Provider ;
+    aia:heldBy         aia:ExampleActorTalentFlowGmbH ;
+    skos:prefLabel "TalentFlow as provider of the recruitment system"@en ;
+    skos:definition """The holding of the provider role by TalentFlow GmbH in respect of the
+        recruitment screening system, by having developed it and placed it on the market
+        under its own name."""@en ;
+    rdfs:comment "Art. 3(3). Terminated by aia:rr_recruitment_northborough under Art. 25(2)."@en .
+
+aia:ra_recruitment_northborough_deployer a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleRecruitmentScreeningSystem ;
+    aia:hasRole        aia:Deployer ;
+    aia:heldBy         aia:ExampleActorNorthBoroughCouncil ;
+    skos:prefLabel "North Borough Council as deployer of the recruitment system"@en ;
+    skos:definition """The holding of the deployer role by North Borough Council in respect
+        of the recruitment screening system, by using it under its own authority in a
+        professional activity."""@en ;
+    rdfs:comment """Art. 3(4). RETAINED after the Art. 25 reassignment: aia:promotes does
+        not end the prior assignment, because Art. 25(1) does not provide that the prior
+        role ceases. Contrast aia:terminates on the initial provider's assignment."""@en .
+
+aia:ra_recruitment_northborough_provider a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleRecruitmentScreeningSystem ;
+    aia:hasRole        aia:Provider ;
+    aia:heldBy         aia:ExampleActorNorthBoroughCouncil ;
+    skos:prefLabel "North Borough Council as provider of the recruitment system"@en ;
+    skos:definition """The holding of the provider role by North Borough Council in respect
+        of the recruitment screening system, acquired by substantially modifying a high-risk
+        system already placed on the market so that it remains high-risk."""@en ;
+    rdfs:comment """Art. 25(1)(b). Held CONCURRENTLY with the deployer assignment above by
+        the same actor for the same system, which is the case the reification exists
+        for."""@en .
+
+aia:ra_recruitment_eurodistribution_importer a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleRecruitmentScreeningSystem ;
+    aia:hasRole        aia:Importer ;
+    aia:heldBy         aia:ExampleActorEuroDistributionBV ;
+    skos:prefLabel "EuroDistribution as importer of the recruitment system"@en ;
+    skos:definition """The holding of the importer role by EuroDistribution BV in respect of
+        the recruitment screening system, by placing on the Union market a system bearing
+        the name of an undertaking established outside the Union."""@en ;
+    rdfs:comment "Art. 3(6). Obligations at Art. 23, which is outside the modelled scope."@en .
+
+aia:ra_recruitment_eurodistribution_distributor a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleRecruitmentScreeningSystem ;
+    aia:hasRole        aia:Distributor ;
+    aia:heldBy         aia:ExampleActorEuroDistributionBV ;
+    skos:prefLabel "EuroDistribution as distributor of the recruitment system"@en ;
+    skos:definition """The holding of the distributor role by EuroDistribution BV in respect
+        of the recruitment screening system, by making it available on the Union market
+        otherwise than as provider or importer."""@en ;
+    rdfs:comment """Art. 3(7). The second of two concurrent assignments held by one actor
+        for one system -- Recital 83's example. Obligations at Art. 24, outside scope, so
+        CQ3 returns nothing for either role even before its FILTER applies."""@en .
+
+### The imaging triage software ###################################
+
+aia:ra_medical_helvetia_provider a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleMedicalImagingTriageSoftware ;
+    aia:hasRole        aia:Provider ;
+    aia:heldBy         aia:ExampleActorHelvetiaMedTechAG ;
+    skos:prefLabel "Helvetia MedTech as provider of the imaging triage software"@en ;
+    skos:definition """The holding of the provider role by Helvetia MedTech AG in respect
+        of the imaging triage software, by having developed it and placed it on the
+        market under its own name."""@en ;
+    rdfs:comment "Art. 3(3). Terminated by aia:rr_medical_rhine under Art. 25(2)."@en .
+
+aia:ra_medical_rhine_importer a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleMedicalImagingTriageSoftware ;
+    aia:hasRole        aia:Importer ;
+    aia:heldBy         aia:ExampleActorRhineImportsGmbH ;
+    skos:prefLabel "Rhine Imports as importer of the imaging triage software"@en ;
+    skos:definition """The holding of the importer role by Rhine Imports GmbH in respect of
+        the imaging triage software, by placing on the Union market a system bearing the
+        trade mark of a third-country undertaking."""@en ;
+    rdfs:comment "Art. 3(6). Retained after the Art. 25(1)(a) reassignment."@en .
+
+aia:ra_medical_rhine_provider a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleMedicalImagingTriageSoftware ;
+    aia:hasRole        aia:Provider ;
+    aia:heldBy         aia:ExampleActorRhineImportsGmbH ;
+    skos:prefLabel "Rhine Imports as provider of the imaging triage software"@en ;
+    skos:definition """The holding of the provider role by Rhine Imports GmbH in respect of
+        the imaging triage software, acquired by affixing its own trade mark to a
+        high-risk system already placed on the market."""@en ;
+    rdfs:comment "Art. 25(1)(a)."@en .
+
+### The workforce analytics system ################################
+
+aia:ra_workforce_peoplemetrics_distributor a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleWorkforceAnalyticsSystem ;
+    aia:hasRole        aia:Distributor ;
+    aia:heldBy         aia:ExampleActorPeopleMetricsLtd ;
+    skos:prefLabel "PeopleMetrics as distributor of the workforce analytics system"@en ;
+    skos:definition """The holding of the distributor role by PeopleMetrics Ltd in respect
+        of the workforce analytics system, by making it available on the Union market."""@en ;
+    rdfs:comment "Art. 3(7). Retained after the Art. 25(1)(c) reassignment."@en .
+
+aia:ra_workforce_peoplemetrics_provider a owl:NamedIndividual , aia:RoleAssignment ;
+    aia:concernsSystem aia:ExampleWorkforceAnalyticsSystem ;
+    aia:hasRole        aia:Provider ;
+    aia:heldBy         aia:ExampleActorPeopleMetricsLtd ;
+    skos:prefLabel "PeopleMetrics as provider of the workforce analytics system"@en ;
+    skos:definition """The holding of the provider role by PeopleMetrics Ltd in respect of
+        the workforce analytics system, acquired by modifying the intended purpose of a
+        system not classified as high-risk so that it became high-risk."""@en ;
+    rdfs:comment "Art. 25(1)(c)."@en .
+
+#################################################################
+#    Article 25(1) reassignment conditions
+#
+#    General legal content rather than fixture: these are the three
+#    circumstances of Art. 25(1) and would move to the core if an
+#    Article 25 module were ever built. The worked example is the only
+#    file that uses them. All three are used below.
+#
+#    Conditions carry NO aia:statedIn: that property's domain is the
+#    union of aia:Obligation, aia:RoleReassignment and
+#    aia:ConformityAssessmentRoute, and adding aia:ReassignmentCondition
+#    to it is a change to the core, not to a fixture. The provision is
+#    named in rdfs:comment, which is the convention the class skeleton
+#    used before article resources existed.
+#################################################################
+
+aia:rc_art25_1_a_own_name a owl:NamedIndividual , aia:ReassignmentCondition ;
+    skos:prefLabel "Affixing one's own name or trade mark (Art. 25(1)(a))"@en ;
+    skos:definition """Putting one's name or trade mark on a high-risk AI system already
+        placed on the market or put into service, without prejudice to contractual
+        arrangements stipulating that the obligations are otherwise allocated."""@en ;
+    rdfs:comment "Art. 25(1)(a)."@en .
+
+aia:rc_art25_1_b_substantial_modification a owl:NamedIndividual , aia:ReassignmentCondition ;
+    rdfs:seeAlso eu-aiact-owl:SubstantialModification ;
+    skos:prefLabel "Substantial modification of a high-risk system (Art. 25(1)(b))"@en ;
+    skos:definition """Making a substantial modification to a high-risk AI system that has
+        already been placed on the market or put into service, in such a way that it remains
+        a high-risk AI system pursuant to Article 6."""@en ;
+    rdfs:comment """Art. 25(1)(b). eu-aiact-owl:SubstantialModification carries the
+        Art. 3(23) definition and is referenced rather than restated."""@en .
+
+aia:rc_art25_1_c_purpose_modification a owl:NamedIndividual ,
+        aia:ReassignmentCondition , aia:AnnexIIIGround , aia:PurposeGround ;
+    rdfs:seeAlso eu-aiact-owl:HighRiskAISystem-AnnexIII-4-b ;
+    skos:prefLabel "Modification of intended purpose making a system high-risk (Art. 25(1)(c))"@en ;
+    skos:definition """Modifying the intended purpose of an AI system, including a
+        general-purpose AI system, which has not been classified as high-risk and has
+        already been placed on the market or put into service, in such a way that the
+        system concerned becomes a high-risk AI system in accordance with Article 6."""@en ;
+    rdfs:comment """Art. 25(1)(c), and THE INDIVIDUAL THAT JUSTIFIES AN OMISSION FROM THE
+        DISJOINTNESS AXIOM. It is a reassignment condition and a classification ground at
+        once: the modification is both the conduct that promotes the distributor to
+        provider and the fact in virtue of which the system becomes high-risk. It is used in
+        both positions below -- as aia:triggeredBy on the reassignment and as
+        aia:classifiedOnGround on the system. Typed AnnexIIIGround as well as PurposeGround
+        because Art. 6(2) reaches the category through the Annex III use case, which is what
+        aia:HighRiskByGround has a disjunct for; the purpose typing alone would not
+        classify."""@en .
+
+#################################################################
+#    Role reassignments, Article 25
+#
+#    Three events, one per limb of Art. 25(1), each deliberately
+#    ASYMMETRIC: aia:promotes does not end the prior assignment,
+#    aia:terminates does end the initial provider's.
+#################################################################
+
+aia:rr_recruitment_northborough a owl:NamedIndividual , aia:RoleReassignment ;
+    aia:concernsSystem aia:ExampleRecruitmentScreeningSystem ;
+    aia:triggeredBy    aia:rc_art25_1_b_substantial_modification ;
+    aia:promotes       aia:ra_recruitment_northborough_deployer ;
+    aia:establishes    aia:ra_recruitment_northborough_provider ;
+    aia:terminates     aia:ra_recruitment_talentflow_provider ;
+    aia:statedIn       aia:art_25 ;
+    skos:prefLabel "North Borough Council becomes provider of the recruitment system"@en ;
+    skos:definition """The event by which North Borough Council, having substantially
+        modified the recruitment screening system while it remained high-risk, came to be
+        considered its provider, while TalentFlow GmbH ceased to be."""@en ;
+    rdfs:comment """Art. 25(1)(b) and 25(2). The deployer assignment is promoted and
+        RETAINED; the initial provider's is terminated. That asymmetry is the substantive
+        content of the event and is why aia:promotes and aia:terminates are two
+        properties."""@en .
+
+aia:rr_medical_rhine a owl:NamedIndividual , aia:RoleReassignment ;
+    aia:concernsSystem aia:ExampleMedicalImagingTriageSoftware ;
+    aia:triggeredBy    aia:rc_art25_1_a_own_name ;
+    aia:promotes       aia:ra_medical_rhine_importer ;
+    aia:establishes    aia:ra_medical_rhine_provider ;
+    aia:terminates     aia:ra_medical_helvetia_provider ;
+    aia:statedIn       aia:art_25 ;
+    skos:prefLabel "Rhine Imports becomes provider of the imaging triage software"@en ;
+    skos:definition """The event by which Rhine Imports GmbH, having affixed its own trade
+        mark to a high-risk system already placed on the market, came to be considered its
+        provider, while Helvetia MedTech AG ceased to be."""@en ;
+    rdfs:comment "Art. 25(1)(a) and 25(2). Promotion from importer rather than deployer."@en .
+
+aia:rr_workforce_peoplemetrics a owl:NamedIndividual , aia:RoleReassignment ;
+    aia:concernsSystem aia:ExampleWorkforceAnalyticsSystem ;
+    aia:triggeredBy    aia:rc_art25_1_c_purpose_modification ;
+    aia:promotes       aia:ra_workforce_peoplemetrics_distributor ;
+    aia:establishes    aia:ra_workforce_peoplemetrics_provider ;
+    aia:statedIn       aia:art_25 ;
+    skos:prefLabel "PeopleMetrics becomes provider of the workforce analytics system"@en ;
+    skos:definition """The event by which PeopleMetrics Ltd, having modified the intended
+        purpose of a system not classified as high-risk so that it became high-risk, came to
+        be considered its provider."""@en ;
+    rdfs:comment """Art. 25(1)(c). NO aia:terminates, and the absence is deliberate: the
+        example graph records no provider assignment for this system, so there is no
+        assignment to terminate. Art. 25(2) would apply to whoever initially placed it on
+        the market, and that party is simply not in the fixture. This is also what leaves
+        CQ4's OPTIONAL unbound on one of its three rows, showing the OPTIONAL is
+        load-bearing."""@en .
+
+#################################################################
+#    Oversight assignments, Articles 70 and 74
+#
+#    Four, each pairing one obligation with one authority. The pairings
+#    are not exhaustive and are not meant to be: they are the ones the
+#    Act names a supervisory competence for in terms.
+#
+#    NO AI OFFICE ASSIGNMENT. CQ5's VALUES clause admits
+#    eu-aiact:AIOffice and nothing binds it. Art. 75(1) makes the AI
+#    Office exclusively competent for AI systems based on a
+#    general-purpose AI model where model and system come from the same
+#    provider, and for systems that are or are integrated into a very
+#    large online platform or search engine; its competence over the
+#    models themselves lies in Chapter V, out of scope under decision 2
+#    in ../reports/STATUS.md. No example system falls under Art. 75(1),
+#    so an assignment here would assert a competence the Act does not
+#    give it over these systems.
+#################################################################
+
+aia:ExampleNationalCompetentAuthority a owl:NamedIndividual ,
+        eu-aiact-owl:NationalCompetentAuthority , org:Organization ;
+    skos:prefLabel "National Competent Authority of Member State A (example authority)"@en ;
+    skos:definition """The notifying authority and market surveillance authority designated
+        or established by a Member State for the purposes of the Regulation."""@en ;
+    rdfs:comment "Art. 3(48), Art. 70."@en .
+
+aia:ExampleMarketSurveillanceAuthority a owl:NamedIndividual ,
+        eu-aiact-owl:MarketSurveillanceAuthority , org:Organization ;
+    skos:prefLabel "Market Surveillance Authority of Member State A (example authority)"@en ;
+    skos:definition """The authority carrying out the activities and taking the measures
+        pursuant to Regulation (EU) 2019/1020 in respect of AI systems."""@en ;
+    rdfs:comment """Art. 3(26), Art. 74. NOTE FOR CQ5: eu-aiact makes
+        MarketSurveillanceAuthority a SUBCLASS of NationalCompetentAuthority, which is
+        faithful to Art. 3(48), so over an inferred graph this individual matches two of
+        CQ5's four VALUES types and is returned on two rows per obligation. That is the
+        import's taxonomy showing through, not duplicate data."""@en .
+
+aia:ExampleNotifiedBody a owl:NamedIndividual ,
+        eu-aiact-owl:NotifiedBody , org:Organization ;
+    skos:prefLabel "Notified Body 0001 (example body)"@en ;
+    skos:definition """A conformity assessment body notified in accordance with the
+        Regulation and the applicable Union harmonisation legislation."""@en ;
+    rdfs:comment """Art. 3(22). Descends from eu-aiact:ConformityAssessmentBody and not from
+        dpv-owl:Authority, which is why aia:assignedTo carries a union range."""@en .
+
+aia:oa_art16_k_nca a owl:NamedIndividual , aia:OversightAssignment ;
+    aia:oversees   aia:ob_art16_k ;
+    aia:assignedTo aia:ExampleNationalCompetentAuthority ;
+    skos:prefLabel "National competent authority supervises the duty to demonstrate conformity"@en ;
+    skos:definition """The supervision by the national competent authority of the provider's
+        duty to demonstrate, upon reasoned request, the conformity of a high-risk AI system
+        with the requirements of Section 2."""@en ;
+    rdfs:comment """Art. 16(k) with Art. 21. The core file already records this as the duty
+        CQ5 pairs with an oversight assignment."""@en .
+
+aia:oa_art16_f_notified a owl:NamedIndividual , aia:OversightAssignment ;
+    aia:oversees   aia:ob_art16_f ;
+    aia:assignedTo aia:ExampleNotifiedBody ;
+    skos:prefLabel "Notified body supervises the conformity assessment duty"@en ;
+    skos:definition """The involvement of a notified body in the conformity assessment
+        procedure a provider must ensure the high-risk AI system undergoes before it is
+        placed on the market."""@en ;
+    rdfs:comment """Art. 16(f) with Art. 43. The notified body is the third party of the
+        Annex VII route, which is why this obligation is also the one both conformity
+        assessment routes attach to."""@en .
+
+aia:oa_art26_5_msa a owl:NamedIndividual , aia:OversightAssignment ;
+    aia:oversees   aia:ob_art26_5 ;
+    aia:assignedTo aia:ExampleMarketSurveillanceAuthority ;
+    skos:prefLabel "Market surveillance authority supervises deployer monitoring and reporting"@en ;
+    skos:definition """The supervision by the market surveillance authority of the deployer's
+        duty to monitor the operation of a high-risk AI system and to inform the provider
+        and the authority of risks and serious incidents."""@en ;
+    rdfs:comment "Art. 26(5) with Arts. 73, 74 and 79(1)."@en .
+
+aia:oa_art26_12_msa a owl:NamedIndividual , aia:OversightAssignment ;
+    aia:oversees   aia:ob_art26_12 ;
+    aia:assignedTo aia:ExampleMarketSurveillanceAuthority ;
+    skos:prefLabel "Market surveillance authority supervises deployer cooperation"@en ;
+    skos:definition """The supervision by the market surveillance authority of the deployer's
+        duty to cooperate with the competent authorities in any action those authorities take
+        in relation to a high-risk AI system."""@en ;
+    rdfs:comment "Art. 26(12) with Art. 74."@en .
+
+#################################################################
+#    Conformity assessment routes, Article 43
+#
+#    All three attach to Art. 16(f), the duty to ensure the system
+#    undergoes the relevant procedure. They are alternatives, so CQ5
+#    returns that obligation on three rows -- which is the point: the
+#    route is a CHOICE, and eu-aiact has no term for the choice, only
+#    for the assessment. Which one applies depends on the ground:
+#    Annex VI or VII for Annex III systems under Art. 43(1)-(2), and the
+#    sectoral procedure for Annex I, Section A systems under Art. 43(3),
+#    including those that also fall within Annex III.
+#
+#    A LIMIT OF CQ5, VISIBLE ONLY ONCE THE DATA EXISTS. CQ5's question
+#    asks which route applies to a given high-risk AI SYSTEM, but the
+#    query binds a route to an OBLIGATION and no property relates a
+#    route to a system. The question's second half is therefore
+#    answered only obligation-indexed. Recorded in ../reports/cq-results.md
+#    rather than patched here, because adding aia:appliesToSystem would
+#    be a change to the core that no query in ../queries/ binds.
+#################################################################
+
+aia:route_annex_VI a owl:NamedIndividual , aia:ConformityAssessmentRoute ;
+    aia:appliesToObligation aia:ob_art16_f ;
+    aia:statedIn            aia:annex_VI ;
+    skos:prefLabel "Internal control route (Annex VI)"@en ;
+    skos:definition """The conformity assessment procedure based on internal control, in
+        which the provider itself verifies that its quality management system and the
+        technical documentation conform and that the system meets the Section 2
+        requirements."""@en ;
+    rdfs:comment "Art. 43 and Annex VI."@en .
+
+aia:route_annex_VII a owl:NamedIndividual , aia:ConformityAssessmentRoute ;
+    aia:appliesToObligation aia:ob_art16_f ;
+    aia:statedIn            aia:annex_VII ;
+    skos:prefLabel "Quality management system and technical documentation route (Annex VII)"@en ;
+    skos:definition """The conformity assessment procedure in which a notified body assesses
+        the quality management system and the technical documentation of the high-risk AI
+        system."""@en ;
+    rdfs:comment """Art. 43 and Annex VII. The route on which aia:oa_art16_f_notified's
+        notified body acts."""@en .
+
+aia:route_annex_I_sectoral a owl:NamedIndividual , aia:ConformityAssessmentRoute ;
+    aia:appliesToObligation aia:ob_art16_f ;
+    aia:statedIn            aia:art_43 ;
+    skos:prefLabel "Sectoral procedure under Annex I, Section A legislation (Art. 43(3))"@en ;
+    skos:definition """The conformity assessment procedure required by the Union harmonisation
+        legislation listed in Annex I, Section A that covers the product, into which the
+        Section 2 requirements and the assessment of the Article 17 quality management system
+        are incorporated, with points 3, 4.3, 4.4, 4.5, the fifth paragraph of point 4.6 and
+        point 5 of Annex VII applying. It also applies where the system additionally falls
+        within an Annex III category."""@en ;
+    rdfs:comment """Art. 43(3), verified against the Official Journal. The route of
+        aia:ExampleMedicalImagingTriageSoftware, whose notified body under Regulation (EU)
+        2017/745 carries out the assessment."""@en .

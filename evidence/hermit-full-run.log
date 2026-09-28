@@ -1,0 +1,40 @@
+$ scripts/run-hermit.sh                  # full closure: core + 4 imports + worked example
+(DEBUG/INFO-level OWL API noise stripped; WARN kept verbatim)
+
+Loading .../scripts/../ontology/aia-example.ttl ...
+14:49:47.400 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#narrower in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#narrower>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#narrower>))]
+14:49:47.401 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#broader in punning not allowed [Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#broader>)), Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#broader>))]
+14:49:47.401 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#hasTopConcept in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>))]
+14:49:47.401 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#topConceptOf in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>))]
+14:49:47.514 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#narrower in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#narrower>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#narrower>))]
+14:49:47.514 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#broader in punning not allowed [Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#broader>)), Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#broader>))]
+14:49:47.515 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#hasTopConcept in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>))]
+14:49:47.515 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#topConceptOf in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>))]
+14:49:47.563 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#narrower in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#narrower>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#narrower>))]
+14:49:47.563 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#broader in punning not allowed [Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#broader>)), Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#broader>))]
+14:49:47.563 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#hasTopConcept in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#hasTopConcept>))]
+14:49:47.563 [main] WARN uk.ac.manchester.cs.owl.owlapi.OWLOntologyManagerImpl - Illegal redeclarations of entities: reuse of entity http://www.w3.org/2004/02/skos/core#topConceptOf in punning not allowed [Declaration(ObjectProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>)), Declaration(AnnotationProperty(<http://www.w3.org/2004/02/skos/core#topConceptOf>))]
+Loaded ontology: OntologyID(OntologyIRI(<https://w3id.org/aia-ont/example>) VersionIRI(<https://w3id.org/aia-ont/example/0.1>))
+Imports closure size (ontologies): 6
+Axiom count across closure: 4812
+
+=== Starting HermiT reasoner ===
+Consistent: true  (502 ms)
+Precomputed class hierarchy + class assertions + object property hierarchy (3778 ms)
+
+Unsatisfiable classes (excluding owl:Nothing itself): 0
+
+=== CQ1 entailment check (classification rule) ===
+ExampleRecruitmentScreeningSystem entailed a HighRiskAISystem: true
+Total individuals entailed HighRiskAISystem: 48
+
+=== Terminated role assignment entailment (decision 5) ===
+Individuals entailed aia:TerminatedRoleAssignment: 2
+  ra_medical_helvetia_provider
+  ra_recruitment_talentflow_provider
+
+=== Reasoner identification ===
+Reasoner name: HermiT
+Reasoner version: 1.4.1.432
+
+DONE

@@ -1,0 +1,45 @@
+# CQ1 — Into which risk category does a given AI system fall, and on what
+# grounds (intended purpose, Annex III area, or Annex I product-safety route)?
+#
+# A system whose Annex III use case Art. 6(3) derogates returns its
+# aia:DerogatedAnnexIIIGround alongside a non-high-risk tier.
+#
+# Categories and their values come from the imported eu-aiact risk tiers.
+# The ground hierarchy is local: the rule connecting determinants to category
+# is stated in prose in AIRO's documentation and in axioms nowhere.
+#
+# A ground returned twice, once under each of two ground types, is the
+# Article 6(2) case and is intended behaviour, not duplication.
+PREFIX aia:      <https://w3id.org/aia-ont#>
+PREFIX eli:      <http://data.europa.eu/eli/ontology#>
+PREFIX skos:     <http://www.w3.org/2004/02/skos/core#>
+PREFIX airo:     <https://w3id.org/airo#>
+PREFIX org:      <http://www.w3.org/ns/org#>
+PREFIX eu-aiact: <https://w3id.org/dpv/legal/eu/aiact/owl#>
+
+SELECT ?system ?systemLabel ?category ?categoryLabel ?categoryDefinition
+       ?groundType ?ground ?groundLabel ?article
+WHERE {
+  ?system a airo:AISystem ;
+          skos:prefLabel ?systemLabel ;
+          aia:hasRiskCategory ?category .
+
+  ?category a eu-aiact:RiskLevel ;
+            skos:prefLabel ?categoryLabel .
+
+  OPTIONAL { ?category skos:definition ?categoryDefinition }
+  OPTIONAL { ?category aia:definedIn   ?article }
+
+  OPTIONAL {
+    ?system aia:classifiedOnGround ?ground .
+    ?ground a ?groundType ;
+            skos:prefLabel ?groundLabel .
+    VALUES ?groundType {
+      aia:PurposeGround
+      aia:AnnexIIIGround
+      aia:DerogatedAnnexIIIGround
+      aia:AnnexIGround
+    }
+  }
+}
+ORDER BY ?systemLabel ?categoryLabel

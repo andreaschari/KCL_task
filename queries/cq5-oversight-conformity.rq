@@ -1,0 +1,49 @@
+# CQ5 — Which authority or body oversees a given obligation, and which
+# conformity assessment route applies to a given high-risk AI system?
+#
+# aia:oversees is local: eu-aiact names the authorities but does not connect
+# them to the obligations they supervise, and that connection presupposes
+# obligations as objects, so it fails for the same reason as CQ3.
+#
+# aia:ConformityAssessmentRoute is distinct from eu-aiact:ConformityAssessment:
+# the latter is the assessment process of Art. 3(20), the former the choice
+# between the Annex VI internal-control and Annex VII quality-management
+# procedures, for which eu-aiact has no term.
+PREFIX aia:      <https://w3id.org/aia-ont#>
+PREFIX eli:      <http://data.europa.eu/eli/ontology#>
+PREFIX skos:     <http://www.w3.org/2004/02/skos/core#>
+PREFIX airo:     <https://w3id.org/airo#>
+PREFIX org:      <http://www.w3.org/ns/org#>
+PREFIX eu-aiact: <https://w3id.org/dpv/legal/eu/aiact/owl#>
+
+SELECT ?obligation ?obligationLabel ?article
+       ?authority ?authorityLabel ?authorityType
+       ?route ?routeLabel ?routeArticle
+WHERE {
+  ?obligation a aia:Obligation ;
+              skos:prefLabel ?obligationLabel ;
+              aia:statedIn   ?article .
+
+  OPTIONAL {
+    ?oversight a aia:OversightAssignment ;
+               aia:oversees   ?obligation ;
+               aia:assignedTo ?authority .
+    ?authority a org:Organization ;
+               a ?authorityType ;
+               skos:prefLabel ?authorityLabel .
+    VALUES ?authorityType {
+      eu-aiact:NationalCompetentAuthority
+      eu-aiact:MarketSurveillanceAuthority
+      eu-aiact:NotifiedBody
+      eu-aiact:AIOffice
+    }
+  }
+
+  OPTIONAL {
+    ?route a aia:ConformityAssessmentRoute ;
+           aia:appliesToObligation ?obligation ;
+           skos:prefLabel          ?routeLabel ;
+           aia:statedIn            ?routeArticle .
+  }
+}
+ORDER BY ?article ?authorityLabel

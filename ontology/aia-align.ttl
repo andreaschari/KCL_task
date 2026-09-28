@@ -1,0 +1,147 @@
+@prefix aia:          <https://w3id.org/aia-ont#> .
+@prefix align:        <https://w3id.org/aia-ont/align#> .
+@prefix owl:          <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:         <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:          <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:          <http://purl.org/dc/terms/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+@prefix prov:         <http://www.w3.org/ns/prov#> .
+@prefix org:          <http://www.w3.org/ns/org#> .
+@prefix odrl:         <http://www.w3.org/ns/odrl/2/> .
+@prefix dpv-owl:      <https://w3id.org/dpv/owl#> .
+@prefix vair:         <https://w3id.org/vair#> .
+
+#################################################################
+#    AIA-Ont alignment module
+#
+#    SEPARATE FILE, AND NOT IMPORTED BY aia-ont.ttl. The core ontology
+#    carries no alignment commitment; anything that wants the
+#    alignments loads THIS file, which imports the core. Loading
+#    aia-ont.ttl alone therefore stays free of every axiom below --
+#    which is the point, because each one parents a local term into a
+#    vocabulary whose own axioms we have deliberately not taken on.
+#
+#    ALIGNED, NOT IMPORTED. None of PROV-O, ORG, ODRL or DPV core
+#    appears in an owl:imports anywhere. Their terms are STUBBED below:
+#    declared, and nothing else said about them. That is what keeps the
+#    hazards out of the closure --
+#
+#      * PROV-O: prov:Activity is disjoint from prov:Entity. Once AI
+#        systems are typed on both sides of a provenance relation that
+#        disjointness fires, and it buys nothing the four axioms here
+#        do not. Stubbing prov:Association, prov:agent, prov:hadRole
+#        and prov:Role takes the vocabulary without the hazard.
+#      * ORG: org:organization has range org:Organization, and it and
+#        org:member are FUNCTIONAL. Subclassing org:Membership would
+#        mean one assignment pointing at two systems infers the two
+#        systems identical. org:Membership is therefore cited as
+#        precedent and NOT subclassed; only aia:Role is aligned.
+#      * ODRL: rdfs:seeAlso only, no subsumption. odrl:Duty is disjoint
+#        from odrl:Permission, which is sound and would be usable, but
+#        DPV already carries the same separation without the
+#        assigner/assignee framing, and aligning to both would be
+#        double-parenting the deontic layer.
+#
+#    Every axiom below is one of the five bound in
+#    ../reports/reuse-decisions.md. Nothing here is discretionary, and
+#    nothing is added beyond that register.
+#################################################################
+
+<https://w3id.org/aia-ont/align>
+    a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/aia-ont/align/0.1> ;
+    owl:versionInfo "0.1" ;
+    dct:title       "EU AI Act Ontology — alignment module"@en ;
+    dct:description """External alignments for AIA-Ont, held apart from the core so that
+        loading the core commits to none of them. Six axioms over four vocabularies, none
+        of which is imported."""@en ;
+    dct:creator     "Andreas Chari" ;
+    dct:created     "2026-09-26"^^xsd:date ;
+    dct:license     <https://creativecommons.org/licenses/by/4.0/> ;
+    owl:imports     <https://w3id.org/aia-ont> ;
+    rdfs:comment    """Resolved offline through catalog-v001.xml, which maps the core's
+        ontology IRI to aia-ont.ttl in this directory."""@en .
+
+#################################################################
+#    Stubs for the aligned-but-not-imported vocabularies
+#
+#    Declaration only. Adding any further axiom to these would be to
+#    import the vocabulary by hand, which is the thing the decisions
+#    forbid.
+#################################################################
+
+prov:Association a owl:Class .
+prov:Role        a owl:Class .
+prov:agent       a owl:ObjectProperty .
+prov:hadRole     a owl:ObjectProperty .
+
+org:Role         a owl:Class .
+org:Membership   a owl:Class .   # cited as precedent, deliberately NOT subclassed
+
+odrl:Duty        a owl:Class .
+odrl:Permission  a owl:Class .
+
+dpv-owl:Obligation a owl:Class .  # the /owl# namespace, not dpv: -- see below
+
+#################################################################
+#    1. PROV-O — four axioms (decision 7)
+#
+#    Partial by design: aia:concernsSystem has NO PROV-O counterpart.
+#    An association in PROV-O relates an activity, an agent and a role;
+#    it has no slot for the thing the role is held RELATIVE TO, which
+#    is precisely the third argument the Act needs and the reason
+#    aia:RoleAssignment is reified in the first place. The alignment
+#    therefore carries three of the four arguments and drops one, and
+#    that is a limit of PROV-O rather than a gap here.
+#################################################################
+
+aia:RoleAssignment rdfs:subClassOf prov:Association .
+aia:heldBy  rdfs:subPropertyOf prov:agent .
+aia:hasRole rdfs:subPropertyOf prov:hadRole .
+aia:Provider a prov:Role .
+
+#################################################################
+#    2. ORG — one axiom (decision 8)
+#
+#    aia:Role only. Whether org:Organization should be the type of the
+#    authorities is a SECOND decision, deferred to the authority
+#    module; CQ5 assumes it and nothing here supplies it, so CQ5's
+#    ?authority pattern will not bind on this module alone.
+#################################################################
+
+aia:Role rdfs:subClassOf org:Role .
+
+#################################################################
+#    3. DPV core — one axiom (decision 4, retargeted)
+#
+#    The target is dpv-owl:Obligation in the /owl# namespace, NOT
+#    dpv:Obligation. This is a change to the survey's recommendation,
+#    not a restatement: the plain dpv: namespace is served under a
+#    different scheme and aligning to it would place the local
+#    obligation layer under an IRI that does not resolve to the
+#    vocabulary intended.
+#################################################################
+
+aia:Obligation rdfs:subClassOf dpv-owl:Obligation .
+
+#################################################################
+#    4. ODRL — rdfs:seeAlso only (decision 10)
+#
+#    Annotation, not subsumption. Recorded so the relationship is
+#    discoverable without parenting the deontic layer twice.
+#################################################################
+
+aia:Obligation        rdfs:seeAlso odrl:Duty .
+aia:ProhibitedPractice rdfs:seeAlso odrl:Duty .
+aia:Exemption         rdfs:seeAlso odrl:Permission .
+
+#################################################################
+#    5. VAIR — no structural axiom (decision 2)
+#
+#    VAIR terms are referenced as VALUES of classification grounds and
+#    intended purposes, not aligned by subsumption, and VAIR's purpose
+#    taxonomy is NOT asserted to be the Annex III partition. There is
+#    therefore nothing to state until instance data exists; this
+#    section is a placeholder recording that the omission is deliberate
+#    rather than forgotten.
+#################################################################

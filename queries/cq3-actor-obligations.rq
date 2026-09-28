@@ -1,0 +1,61 @@
+# CQ3 — Which obligations attach to the provider of a high-risk AI system,
+# and which to the deployer of that same system?
+#
+# aia:borneBy is local and unavoidably so: no surveyed ontology attaches an
+# obligation to the role that bears it. dpv:hasObligation has domain
+# dpv:Context and mailo:hasObligation has domain RegulatoryFramework — both
+# attach duties to the legal source rather than to the party bound.
+#
+# aia:Provider and aia:Deployer are individuals of aia:Role, not classes,
+# which is why they appear in a FILTER ... IN over values rather than as
+# types. An actor holding more than one role for the system (the post-Art. 25
+# case) is returned once per role, with the obligations of each.
+#
+# RUN THIS OVER THE INFERRED GRAPH. Which duties an assignment carries turns
+# on a defined class whose membership is entailed from the recorded Art. 25
+# event. A live assignment carries the duties aia:borneBy its role; one that
+# Art. 25(2) has ENDED carries only the residual duties aia:borneOnTermination
+# its role -- cooperation with the new provider and the three duties listed
+# after it. Over asserted triples nothing is recognised as ended, so the query
+# returns the initial provider's twelve Art. 16 duties and none of its four
+# residual ones.
+PREFIX aia:      <https://w3id.org/aia-ont#>
+PREFIX eli:      <http://data.europa.eu/eli/ontology#>
+PREFIX skos:     <http://www.w3.org/2004/02/skos/core#>
+PREFIX airo:     <https://w3id.org/airo#>
+PREFIX org:      <http://www.w3.org/ns/org#>
+PREFIX eu-aiact: <https://w3id.org/dpv/legal/eu/aiact/owl#>
+
+SELECT ?actorLabel ?roleLabel ?standing ?obligation ?obligationLabel ?obligationDefinition ?article
+WHERE {
+  VALUES ?system { aia:ExampleRecruitmentScreeningSystem }
+
+  ?system aia:hasRiskCategory eu-aiact:RiskLevelHigh .
+
+  ?assignment a aia:RoleAssignment ;
+              aia:concernsSystem ?system ;
+              aia:hasRole        ?role ;
+              aia:heldBy         ?actor .
+
+  ?actor skos:prefLabel ?actorLabel .
+  ?role  a aia:Role ;
+         skos:prefLabel ?roleLabel .
+  FILTER (?role IN (aia:Provider, aia:Deployer))
+
+  # Article 25(2): an assignment the Act has ended no longer carries its role's
+  # duties, only the residual ones attached to the ending. This cites a MODELLED
+  # CLASS rather than restating the rule, so if the circumstances that end an
+  # assignment are ever broadened, the axiom changes and this query follows.
+  OPTIONAL { ?assignment a aia:TerminatedRoleAssignment .
+             BIND ("ended by Art. 25(2)" AS ?standing) }
+
+  ?obligation a aia:Obligation ;
+              aia:appliesToCategory eu-aiact:RiskLevelHigh ;
+              skos:prefLabel        ?obligationLabel ;
+              aia:statedIn          ?article .
+  FILTER ( (!BOUND(?standing) && EXISTS { ?obligation aia:borneBy ?role })
+        || ( BOUND(?standing) && EXISTS { ?obligation aia:borneOnTermination ?role }) )
+
+  OPTIONAL { ?obligation skos:definition ?obligationDefinition }
+}
+ORDER BY ?actorLabel ?roleLabel ?article

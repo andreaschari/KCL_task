@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Protégé / OWLAPI XML catalog. Redirects each owl:imports IRI to the pinned
+  local copy under imports/, so the ontology loads without network access.
+
+  Each 'name' is the ontology IRI AS DECLARED in the retrieved serialisation.
+  Two of the four terminate in '#', those ontologies declaring the ontology
+  IRI identical to the namespace IRI. Written uniformly, two of the four
+  would be imports the OWLAPI cannot match to the loaded ontology.
+
+  ELI is mapped under BOTH spellings — with and without the trailing '#' — so
+  that either resolves. MAILO imports it without the hash; mapping both means
+  a graph borrowed from elsewhere still loads.
+-->
+<catalog prefer="public" xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+
+  <!-- DPV EU AI Act extension, OWL serialisation, v2.3 -->
+  <uri id="dpv-eu-aiact-owl"
+       name="https://w3id.org/dpv/legal/eu/aiact/owl#"
+       uri="imports/eu-aiact-owl.ttl"/>
+
+  <!-- AIRO 1.0 -->
+  <uri id="airo"
+       name="https://w3id.org/airo"
+       uri="imports/airo.ttl"/>
+
+  <!-- ELI 1.4 — canonical Publications Office download -->
+  <uri id="eli-hash"
+       name="http://data.europa.eu/eli/ontology#"
+       uri="imports/eli.owl"/>
+  <uri id="eli-nohash"
+       name="http://data.europa.eu/eli/ontology"
+       uri="imports/eli.owl"/>
+
+  <!-- SKOS Core -->
+  <uri id="skos"
+       name="http://www.w3.org/2004/02/skos/core"
+       uri="imports/skos.rdf"/>
+
+  <!-- The core ontology, so the alignment module and the worked example
+       both resolve offline -->
+  <uri id="aia-ont-core"
+       name="https://w3id.org/aia-ont"
+       uri="aia-ont.ttl"/>
+
+  <!-- The worked example, so anything importing it resolves too.
+       Nothing in this repository imports it; the entry is here so that a
+       reviewer can open aia-example.ttl directly in Protege and have both
+       it and the core load without network access. -->
+  <uri id="aia-ont-example"
+       name="https://w3id.org/aia-ont/example"
+       uri="aia-example.ttl"/>
+
+  <!-- The alignment module, for the same reason -->
+  <uri id="aia-ont-align"
+       name="https://w3id.org/aia-ont/align"
+       uri="aia-align.ttl"/>
+
+</catalog>

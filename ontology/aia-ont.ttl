@@ -1,0 +1,1777 @@
+@prefix aia:          <https://w3id.org/aia-ont#> .
+@prefix owl:          <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs:         <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:          <http://www.w3.org/2001/XMLSchema#> .
+@prefix dct:          <http://purl.org/dc/terms/> .
+@prefix skos:         <http://www.w3.org/2004/02/skos/core#> .
+@prefix eli:          <http://data.europa.eu/eli/ontology#> .
+@prefix airo:         <https://w3id.org/airo#> .
+@prefix eu-aiact-owl: <https://w3id.org/dpv/legal/eu/aiact/owl#> .
+@prefix dpv-owl:      <https://w3id.org/dpv/owl#> .
+@prefix tech-owl:     <https://w3id.org/dpv/tech/owl#> .
+@prefix ai-owl:       <https://w3id.org/dpv/ai/owl#> .
+@prefix risk-owl:     <https://w3id.org/dpv/risk/owl#> .
+@prefix pd-owl:       <https://w3id.org/dpv/pd/owl#> .
+@prefix vair:         <https://w3id.org/vair#> .
+@prefix prov:         <http://www.w3.org/ns/prov#> .
+@prefix org:          <http://www.w3.org/ns/org#> .
+@prefix odrl:         <http://www.w3.org/ns/odrl/2/> .
+
+#################################################################
+#    Ontology declaration and import block
+#################################################################
+
+<https://w3id.org/aia-ont>
+    a owl:Ontology ;
+    owl:versionIRI <https://w3id.org/aia-ont/0.1> ;
+    owl:versionInfo "0.1" ;
+
+    dct:title       "EU AI Act Ontology (AIA-Ont)"@en ;
+    dct:description """A proof-of-concept OWL 2 DL ontology of Regulation (EU) 2024/1689
+        (the EU AI Act), covering AI system risk categories, prohibited practices,
+        high-risk systems, the actors of the Act and their obligations."""@en ;
+    dct:creator     "Andreas Chari" ;
+    dct:created     "2026-09-25"^^xsd:date ;
+    dct:license     <https://creativecommons.org/licenses/by/4.0/> ;
+
+    # Scope: the Act AS AMENDED by Regulation (EU) 2026/1744, i.e. the
+    # consolidated text 02024R1689 of 27.07.2026. Every modelled provision is
+    # checked against that text; see report.md, section 1.
+    dct:source      <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    dct:source      <http://data.europa.eu/eli/reg/2026/1744/oj> ;
+
+    #############################################################
+    # Direct imports. Each IRI below is the ontology IRI AS DECLARED
+    # in the retrieved serialisation, not as cited in its documentation.
+    # Note the trailing '#' on two of the four: those ontologies declare
+    # their ontology IRI identical to their namespace IRI. Dropping it
+    # yields an import Protege cannot match to the loaded ontology.
+    # Every import is resolved offline through catalog-v001.xml.
+    #############################################################
+
+    # DPV EU AI Act extension, OWL serialisation, v2.3.
+    # Risk tiers; both Art. 6 routes; Annex I (1-20) and Annex III (1-a .. 8-b)
+    # enumerated to clause level; the eight Art. 5(1) prohibitions; operator
+    # roles; authorities; conformity vocabulary.
+    # Verified 2026-09-25: 2,173 triples, 167 owl:Class, 3 owl:ObjectProperty,
+    # 0 disjointWith, 0 Restriction, 0 rdfs:domain, 0 rdfs:range.
+    owl:imports <https://w3id.org/dpv/legal/eu/aiact/owl#> ;
+
+    # AIRO 1.0 (modified 2024-05-25, against the adopted text).
+    # airo:AISystem / AIComponent / AIModel / GPAIModel; the AIOperator
+    # hierarchy; the five Annex III determinant properties.
+    # Verified 2026-09-25: 558 triples, 0 disjointWith, 0 Restriction,
+    # but 33 rdfs:domain and 50 rdfs:range -- entailment-generating.
+    owl:imports <https://w3id.org/airo> ;
+
+    # ELI 1.4, Publications Office of the European Union.
+    # Article-granularity addressing of provisions.
+    # Verified 2026-09-25 against the canonical op.europa.eu download:
+    # 27 owl:Class, 71 owl:ObjectProperty, 18 owl:DatatypeProperty,
+    # 0 disjointWith, 11 Restriction, 13 owl:FunctionalProperty.
+    # NB the published file is v1.4, not v1.5; it declares no owl:versionIRI.
+    owl:imports <http://data.europa.eu/eli/ontology#> ;
+
+    # SKOS Core. Labels and definitions on every local term.
+    # Imported transitively by ELI as well; declared explicitly because
+    # this ontology uses it directly and should not depend on ELI keeping it.
+    # NB this is the one import not re-parsed in this session (w3.org
+    # unreachable); the IRI string is corroborated by ELI's own owl:imports.
+    owl:imports <http://www.w3.org/2004/02/skos/core> ;
+
+    rdfs:comment """Import block only. Aligned-not-imported vocabularies
+        (PROV-O, ORG, DPV core/tech, VAIR, ODRL) are bound as prefixes above
+        and referenced by axiom in later modules; they are deliberately absent
+        from owl:imports. See ../reports/reuse-decisions.md for the per-candidate decision and
+        its binding consequence."""@en .
+
+
+#################################################################
+#    Annotation properties
+#
+#    SKOS's label properties are declared locally as annotation
+#    properties, on the reuse survey's own recommendation: skos:Concept
+#    is an owl:Class whose instances are individuals, so applying
+#    skos:prefLabel to aia: CLASSES mixes an individual-oriented
+#    vocabulary with class-level annotation. Declaring them here keeps
+#    the file in OWL 2 DL without waiting on SKOS's own typing.
+#################################################################
+
+skos:prefLabel  a owl:AnnotationProperty .
+skos:definition a owl:AnnotationProperty .
+
+#################################################################
+#    Top-level class skeleton
+#
+#    Every class here is one the reuse survey found absent from all
+#    sixteen candidates. Nothing is minted where an eu-aiact or AIRO
+#    term exists: risk levels are eu-aiact-owl:RiskLevel and its tiers,
+#    intended purpose is eu-aiact-owl:IntendedPurpose, authorities are
+#    eu-aiact-owl:NationalCompetentAuthority and siblings, and AI
+#    systems are airo:AISystem. See ../reports/reuse-decisions.md.
+#
+#    Provenance is recorded at ACT level here (dct:source to the ELI
+#    URI, which resolves) with the article named in rdfs:comment.
+#    Article-level aia:definedIn assertions to eli:LegalResourceSubdivision
+#    resources arrive with the article-resource module; that is the one
+#    deliberate annotation gap at this stage.
+#################################################################
+
+### Roles and their holding ###################################
+
+aia:Role a owl:Class ;
+    skos:prefLabel "Role"@en ;
+    skos:definition """A capacity in which a natural or legal person, public authority, agency
+        or other body acts in respect of a particular AI system under the Regulation —
+        provider, deployer, importer, distributor, product manufacturer or authorised
+        representative. Roles are individuals of this class rather than classes of actors,
+        because the capacity is held relative to one system and is contingent on conduct."""@en ;
+    rdfs:comment "Arts. 3(3)-3(8)."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:RoleAssignment a owl:Class ;
+    skos:prefLabel "Role assignment"@en ;
+    skos:definition """The holding of a role by an actor in respect of one AI system. Reified
+        so that the grounds on which the role is held, the period for which it holds, and the
+        provision establishing it can each be stated — none of which can be attached to a bare
+        class membership."""@en ;
+    rdfs:comment "Structural; no single article. Required by Arts. 16, 25, 26."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Events that change standing ###############################
+
+aia:RegulatoryEvent a owl:Class ;
+    skos:prefLabel "Regulatory event"@en ;
+    skos:definition """An occurrence that changes an actor's standing, or an AI system's
+        classification, under the Regulation."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:RoleReassignment a owl:Class ;
+    rdfs:subClassOf aia:RegulatoryEvent ;
+    skos:prefLabel "Role reassignment"@en ;
+    skos:definition """An event by which a distributor, importer, deployer or other third party
+        comes to be considered the provider of a high-risk AI system already placed on the
+        market or put into service."""@en ;
+    rdfs:comment "Art. 25(1)."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:ReassignmentCondition a owl:Class ;
+    skos:prefLabel "Reassignment condition"@en ;
+    skos:definition """A circumstance whose occurrence triggers a role reassignment: affixing
+        one's name or trademark to a high-risk system already on the market; making a substantial
+        modification to such a system so that it remains high-risk; or modifying the intended
+        purpose of a system not classified as high-risk so that it becomes high-risk."""@en ;
+    rdfs:comment "Art. 25(1)(a)-(c). Values may reference eu-aiact-owl:SubstantialModification."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Deontic content ###########################################
+
+aia:Obligation a owl:Class ;
+    skos:prefLabel "Obligation"@en ;
+    skos:definition """A duty that the Regulation imposes on the holder of a role, in respect of
+        AI systems of a given risk category."""@en ;
+    rdfs:comment "Arts. 16 (providers), 26 (deployers). Aligned to dpv-owl:Obligation in the alignment module."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:ProhibitedPractice a owl:Class ;
+    skos:prefLabel "Prohibited practice"@en ;
+    skos:definition """A practice concerning the placing on the market, putting into service or
+        use of an AI system that Article 5(1) forbids."""@en ;
+    rdfs:comment """Art. 5(1). Deliberately NOT eu-aiact-owl:ProhibitedAISystem, which is a
+        subclass of AISystem: Article 5 prohibits practices, not artefacts, and the same system
+        may be lawfully deployed for one purpose and prohibited for another."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:Exemption a owl:Class ;
+    skos:prefLabel "Exemption"@en ;
+    skos:definition """A condition under which conduct otherwise caught by an Article 5
+        prohibition is permitted."""@en ;
+    rdfs:comment "Art. 5(1)(h), 5(2)-(7). The half of CQ2 no surveyed vocabulary models."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Classification ############################################
+
+aia:ClassificationGround a owl:Class ;
+    skos:prefLabel "Classification ground"@en ;
+    skos:definition """A fact about an AI system in virtue of which it falls into a risk
+        category."""@en ;
+    rdfs:comment "Art. 6. The rule connecting grounds to categories is stated in axioms by no surveyed vocabulary."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:PurposeGround a owl:Class ;
+    rdfs:subClassOf aia:ClassificationGround ;
+    skos:prefLabel "Purpose ground"@en ;
+    skos:definition "A classification ground consisting in the system's intended purpose."@en ;
+    rdfs:comment "Arts. 3(12), 6(2). Values reference eu-aiact-owl:IntendedPurpose."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:AnnexIIIGround a owl:Class ;
+    rdfs:subClassOf aia:ClassificationGround ;
+    skos:prefLabel "Annex III ground"@en ;
+    skos:definition """A classification ground consisting in the system's falling under a use
+        case listed in Annex III, where the Article 6(3) derogation does not apply: the system
+        meets none of the conditions of Article 6(3), second subparagraph, or it performs
+        profiling of natural persons."""@en ;
+    rdfs:comment """Art. 6(2)-(3), Annex III. Values reference eu-aiact-owl:HighRiskAISystem-AnnexIII-*.
+        An Annex III use case that the derogation takes out of high risk is recorded as
+        aia:DerogatedAnnexIIIGround instead, which classifies nothing."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:AnnexIGround a owl:Class ;
+    rdfs:subClassOf aia:ClassificationGround ;
+    skos:prefLabel "Annex I ground"@en ;
+    skos:definition """A classification ground consisting in the system's being a safety
+        component of, or itself being, a product covered by Union harmonisation legislation
+        listed in Annex I and required to undergo a third-party conformity assessment on
+        account of risks to health and safety."""@en ;
+    rdfs:comment """Art. 6(1), 6(1a)-(1c), Art. 3(14), Annex I. Values reference
+        eu-aiact-owl:HighRiskAISystem-AnnexI-*. The conditions a ground must meet are
+        tested when it is RECORDED, not by the reasoner: a system used solely for
+        non-safety aspects such as user assistance or quality control is not a safety
+        component (6(1a)) unless its failure would endanger health and safety (6(1b)),
+        and a third-party assessment required only for other risks, such as radio
+        spectrum, does not count (6(1c)). eu-aiact v2.3 predates these paragraphs and its
+        Annex I terms do not reflect them, nor the move of machinery from Section A,
+        point 1 to Section B, point 21."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:DerogatedAnnexIIIGround a owl:Class ;
+    rdfs:subClassOf aia:ClassificationGround ;
+    owl:disjointWith aia:AnnexIIIGround ;
+    skos:prefLabel "Derogated Annex III ground"@en ;
+    skos:definition """A classification ground consisting in the system's falling under a use
+        case listed in Annex III while Article 6(3) excludes it from high risk: it does not
+        pose a significant risk of harm, because it is intended only to perform a narrow
+        procedural task, to improve the result of a previously completed human activity, to
+        detect decision-making patterns without replacing human assessment, or to perform a
+        preparatory task; and it does not perform profiling of natural persons."""@en ;
+    rdfs:comment """Art. 6(3)-(4), Annex III. Disjoint from aia:AnnexIIIGround, and NOT a disjunct
+        of aia:HighRiskByGround, so a system recorded with this ground alone is not classified
+        high-risk. OWL cannot withdraw an entailment or infer a derogation from its absence,
+        so whether 6(3) applies is recorded as data, by choosing between the two classes.
+        Art. 6(4) requires the provider to document that assessment in any case."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Oversight and conformity ##################################
+
+aia:OversightAssignment a owl:Class ;
+    skos:prefLabel "Oversight assignment"@en ;
+    skos:definition """The supervision of a given obligation by a given authority or body.
+        Reified for the same reason as role assignment: which authority supervises which duty is
+        contingent and jurisdiction-dependent."""@en ;
+    rdfs:comment """Arts. 70, 74, 75. Authorities are eu-aiact-owl: terms, not local ones. Under
+        Art. 75(1) the AI Office, not a national authority, supervises AI systems based on a
+        general-purpose AI model from the same provider and systems that are or are
+        integrated into a very large online platform or search engine."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:ConformityAssessmentRoute a owl:Class ;
+    skos:prefLabel "Conformity assessment route"@en ;
+    skos:definition """The procedure by which conformity of a high-risk AI system is to be
+        assessed: the internal-control route of Annex VI or the quality-management-system and
+        technical-documentation route of Annex VII for Annex III systems, or the procedure of
+        the relevant Annex I, Section A legislation for systems it covers."""@en ;
+    rdfs:comment """Art. 43(1)-(3), Annexes VI-VII. Distinct from eu-aiact-owl:ConformityAssessment,
+        which is the assessment process itself rather than the choice of procedure."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+#################################################################
+#    Classification rule
+#
+#    Decision taken 2026-09-26: the rule is stated as a LOCAL DEFINED
+#    CLASS subsumed by the imported category, not as an
+#    owl:equivalentClass axiom on eu-aiact-owl:HighRiskAISystem itself.
+#    Three reasons, in order of weight:
+#
+#    (a) It keeps the rule one-directional. Membership is a SUFFICIENT
+#        condition, not a biconditional. An equivalence axiom on the
+#        imported class would make a recorded Annex I or III ground
+#        NECESSARY for high risk, so any high-risk system recorded
+#        without its ground would be inconsistent rather than merely
+#        under-described.
+#
+#    Art. 6(3) bears on the other direction: it takes some Annex III
+#    systems OUT of high risk. It is handled in the data, not the rule:
+#    an Annex III use case that the derogation covers is recorded as
+#    aia:DerogatedAnnexIIIGround, which is disjoint from
+#    aia:AnnexIIIGround and not a disjunct below. eu-aiact models no
+#    such derogation (there is no A6-3 term in the import).
+#
+#    (b) It does not modify an import. eu-aiact-owl contains ZERO
+#        owl:equivalentClass axioms across its 2,173 triples; it is
+#        deliberately taxonomic. Supplying the only definitional axiom
+#        in the vocabulary from a downstream file would also collide
+#        with any future version that defines the term itself.
+#
+#    (c) It costs no duplicate term. Because aia:HighRiskByGround is
+#        rdfs:subClassOf eu-aiact-owl:HighRiskAISystem, CQ1's reasoner
+#        variant -- ASK { ...  a eu-aiact-owl:HighRiskAISystem } --
+#        is entailed unchanged. The duplication objection recorded in
+#        reports/competency-questions.md applied to minting a rival
+#        aia:HighRiskAISystem, and does not apply under a distinct name.
+#
+#    The rule cannot instead route through eu-aiact-owl:hasRiskLevel:
+#    the risk tiers are punned class/individual and the hasRiskLevel
+#    assertions sit on the CLASSES (e.g. HighRiskAISystem-A6-2
+#    hasRiskLevel RiskLevelHigh-A6-2), which under direct semantics
+#    says nothing about their instances.
+#
+#    aia:PurposeGround is deliberately NOT a disjunct. Intended purpose
+#    is how one determines whether a system falls within an Annex III
+#    use case; it is not an independent route to high-risk. Under
+#    Art. 6(2) such a ground is typed BOTH aia:PurposeGround and
+#    aia:AnnexIIIGround, and the AnnexIII disjunct fires on it. This is
+#    why the three ground classes are not pairwise disjoint.
+#################################################################
+
+aia:classifiedOnGround a owl:ObjectProperty ;
+    rdfs:domain airo:AISystem ;
+    rdfs:range  aia:ClassificationGround ;
+    skos:prefLabel "classified on ground"@en ;
+    skos:definition """Relates an AI system to a fact about it in virtue of which it falls
+        into a risk category."""@en ;
+    rdfs:comment """Art. 6. Declared here because the classification rule below depends on
+        it; the remaining property declarations arrive with the property module."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:HighRiskByGround a owl:Class ;
+    owl:equivalentClass [
+        a owl:Class ;
+        owl:unionOf (
+            [ a owl:Restriction ;
+              owl:onProperty aia:classifiedOnGround ;
+              owl:someValuesFrom aia:AnnexIIIGround ]
+            [ a owl:Restriction ;
+              owl:onProperty aia:classifiedOnGround ;
+              owl:someValuesFrom aia:AnnexIGround ]
+        )
+    ] ;
+    rdfs:subClassOf eu-aiact-owl:HighRiskAISystem ;
+    skos:prefLabel "High-risk by ground"@en ;
+    skos:definition """An AI system that is high-risk in virtue of a recorded classification
+        ground: either falling under an Annex III use case that Art. 6(3) does not take out of
+        high risk (Art. 6(2)), or being, or being a
+        safety component of, a product covered by Annex I Union harmonisation legislation
+        and required to undergo third-party conformity assessment (Art. 6(1))."""@en ;
+    rdfs:comment """Art. 6(1)-(3), Annexes I and III. A SUFFICIENT condition only: every
+        instance is a eu-aiact-owl:HighRiskAISystem, but a high-risk system need not be an
+        instance of this class, so one recorded without its ground is under-described, not
+        inconsistent. Art. 6(3) derogations are recorded as aia:DerogatedAnnexIIIGround,
+        which is not a disjunct here. Do not restate this axiom as an
+        owl:equivalentClass on the imported class; see the section comment above."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+#################################################################
+#    Disjointness
+#
+#    Asserted over the kinds that are clearly distinct, so that the
+#    reasoner has something to check. Two omissions are deliberate and
+#    are the substantive content of this axiom:
+#
+#    (a) aia:OversightAssignment is NOT in the set. An authority
+#        supervising a duty may later be modelled as holding a role,
+#        which would make oversight a kind of role assignment. Asserting
+#        disjointness now would foreclose that.
+#
+#    (b) aia:ReassignmentCondition is NOT in the set, because Art.
+#        25(1)(c) is simultaneously a reassignment condition and a
+#        classification ground: modifying a system's intended purpose so
+#        that it becomes high-risk does both jobs at once.
+#
+#    Roles themselves are not declared pairwise disjoint anywhere; see
+#    the role individuals section below (Recital 83).
+#################################################################
+
+#    airo:AISystem and airo:AIOperator are members so that the range
+#    assertions on the object properties catch misuse: a role used as the
+#    system of an assignment propagates airo:AISystem onto an aia:Role, and
+#    only this axiom makes that inconsistent.
+#
+#    This asserts a disjointness BETWEEN imported and local classes, which is
+#    a different act from the one rejected in the classification-rule decision. There the
+#    objection was to supplying an owl:equivalentClass DEFINITION for an
+#    imported class, which changes what that term means for every downstream
+#    user. A disjointness axiom adds no definition and leaves each imported
+#    class exactly as expressive as before; it constrains only how the local
+#    terms may be combined with it. Both airo classes are top-level in AIRO
+#    with no superclasses, so the axiom cannot interact with an AIRO
+#    hierarchy to make anything unsatisfiable.
+
+[] a owl:AllDisjointClasses ;
+   owl:members (
+     airo:AISystem
+     airo:AIOperator
+     aia:Role
+     aia:RoleAssignment
+     aia:RegulatoryEvent
+     aia:Obligation
+     aia:ProhibitedPractice
+     aia:Exemption
+     aia:ClassificationGround
+     aia:ConformityAssessmentRoute
+   ) .
+
+#    The ClassificationGround subclasses are deliberately NOT pairwise
+#    disjoint: under Art. 6(2) a system is high-risk where its intended
+#    purpose falls within an Annex III use case, so one ground can be
+#    both a purpose ground and an Annex III ground. The one disjointness
+#    among them, aia:AnnexIIIGround and aia:DerogatedAnnexIIIGround, is
+#    declared on the derogated class: Art. 6(3) either applies or not.
+
+
+#################################################################
+#    External term stubs
+#
+#    The imported eu-aiact extension declares many of its terms as
+#    subclasses of DPV core, DPV tech, DPV AI, DPV risk and DPV
+#    personal-data terms. Those five vocabularies are ALIGNED BUT NOT
+#    IMPORTED (see reuse-decisions.md), so 55 IRIs are referenced in
+#    rdfs:subClassOf, rdfs:subPropertyOf and rdf:type position without
+#    ever being declared. Undeclared IRIs in class position leave the
+#    file outside OWL 2 DL, and Protege reports them as unrecognised.
+#
+#    They are therefore declared here and NOTHING ELSE is said about
+#    them: no labels, no definitions, no axioms. A stub asserts only
+#    that the IRI names a class or a property, which is what the
+#    imported subclass axioms already presuppose. Adding an alignment
+#    axiom to any of them belongs in the alignment module
+#    (aia-align.ttl), not here.
+#
+#    Generated, not hand-listed: the set is recomputed from the closure
+#    by scripts/check-reasoner.py, which fails if it drifts.
+#################################################################
+
+# --- dpv-owl (23) --------------------------------------
+dpv-owl:AIGovernance a owl:Class .
+dpv-owl:AILiteracy a owl:Class .
+dpv-owl:Assessment a owl:Class .
+dpv-owl:Authority a owl:Class .
+dpv-owl:CertificationSeal a owl:Class .
+dpv-owl:Context a owl:Class .
+dpv-owl:DataQualityManagement a owl:Class .
+dpv-owl:HumanOversight a owl:Class .
+dpv-owl:IdentityVerification a owl:Class .
+dpv-owl:InformedConsent a owl:Class .
+dpv-owl:Lawfulness a owl:Class .
+dpv-owl:LegalBasis a owl:Class .
+dpv-owl:Location a owl:Class .
+dpv-owl:NaturalPerson a owl:Class .
+dpv-owl:OrganisationalMeasure a owl:Class .
+dpv-owl:PersonalData a owl:Class .
+dpv-owl:PublicLocation a owl:Class .
+dpv-owl:RegulatorySandbox a owl:Class .
+dpv-owl:Representative a owl:Class .
+dpv-owl:Risk a owl:Class .
+dpv-owl:RiskConcept a owl:Class .
+dpv-owl:RiskLevel a owl:Class .
+dpv-owl:Sector a owl:Class .
+
+# --- tech-owl (17) -------------------------------------
+tech-owl:Actor a owl:Class .
+tech-owl:Auditor a owl:Class .
+tech-owl:Capability a owl:Class .
+tech-owl:Component a owl:Class .
+tech-owl:Deployer a owl:Class .
+tech-owl:Distributor a owl:Class .
+tech-owl:Documentation a owl:Class .
+tech-owl:Importer a owl:Class .
+tech-owl:Instructions a owl:Class .
+tech-owl:IntendedUse a owl:Class .
+tech-owl:Manufacturer a owl:Class .
+tech-owl:MarketAvailabilityStatus a owl:Class .
+tech-owl:Operator a owl:Class .
+tech-owl:Plan a owl:Class .
+tech-owl:Provider a owl:Class .
+tech-owl:ProvisionStatus a owl:Class .
+tech-owl:Specification a owl:Class .
+
+# --- ai-owl (9) ---------------------------------------
+ai-owl:AISystem a owl:Class .
+ai-owl:BiometricCategorisation a owl:Class .
+ai-owl:BiometricIdentification a owl:Class .
+ai-owl:EmotionRecognition a owl:Class .
+ai-owl:HumanOrientedCapability a owl:Class .
+ai-owl:Model a owl:Class .
+ai-owl:TestingData a owl:Class .
+ai-owl:TrainingData a owl:Class .
+ai-owl:ValidationData a owl:Class .
+
+# --- risk-owl (3) -------------------------------------
+risk-owl:Incident a owl:Class .
+risk-owl:Misuse a owl:Class .
+risk-owl:RiskManagement a owl:Class .
+
+# --- pd-owl (1) ---------------------------------------
+pd-owl:Biometric a owl:Class .
+
+# --- object properties (2) ------------------------------
+dpv-owl:hasContext a owl:ObjectProperty .
+dpv-owl:hasRiskLevel a owl:ObjectProperty .
+
+
+#################################################################
+#    Object properties
+#
+#    Eighteen properties, every one of them read off the five CQ
+#    queries in ../queries/ rather than invented: the queries are the
+#    specification, and a property that no query binds is not declared.
+#
+#    THE DOMAIN TRAP. rdfs:domain is conjunctive: two rdfs:domain
+#    triples on one property assert the subject is in BOTH classes, not
+#    either. aia:concernsSystem is used on aia:RoleAssignment (CQ3) and
+#    on aia:RoleReassignment (CQ4), and aia:statedIn on three subject
+#    kinds (CQ3, CQ4, CQ5). Since aia:RoleAssignment and
+#    aia:RegulatoryEvent -- the superclass of aia:RoleReassignment --
+#    are members of the owl:AllDisjointClasses axiom above, writing two
+#    domains on either property would make EVERY use of it
+#    inconsistent. Both are therefore given a single owl:unionOf
+#    domain. scripts/check-reasoner.py contains the control that would
+#    have caught the mistake.
+#
+#    aia:definedIn deliberately has NO rdfs:domain. CQ1 binds it on the
+#    imported eu-aiact risk tiers, which are punned class/individual;
+#    a domain would force a type onto imported terms from this file.
+#    Range only, and the three specific provenance properties are
+#    subproperties of it, so one query over aia:definedIn finds every
+#    article link while each specific property keeps its own domain.
+#################################################################
+
+### Provenance to article ######################################
+
+aia:definedIn a owl:ObjectProperty ;
+    rdfs:range eli:LegalResourceSubdivision ;
+    skos:prefLabel "defined in"@en ;
+    skos:definition """Relates a term to the provision of the Regulation that defines or
+        establishes it."""@en ;
+    rdfs:comment """No rdfs:domain, deliberately: CQ1 binds this on the imported eu-aiact
+        risk tiers, and a domain would type imported terms from this file. The general
+        provenance property; aia:statedIn, aia:prohibitedBy and aia:providedFor are
+        subproperties."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:statedIn a owl:ObjectProperty ;
+    rdfs:subPropertyOf aia:definedIn ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( aia:Obligation
+                                             aia:RoleReassignment
+                                             aia:ConformityAssessmentRoute ) ] ;
+    rdfs:range eli:LegalResourceSubdivision ;
+    skos:prefLabel "stated in"@en ;
+    skos:definition """Relates an obligation, a role reassignment or a conformity assessment
+        route to the provision that states it."""@en ;
+    rdfs:comment "Union domain, not three rdfs:domain triples; see the section note."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:prohibitedBy a owl:ObjectProperty ;
+    rdfs:subPropertyOf aia:definedIn ;
+    rdfs:domain aia:ProhibitedPractice ;
+    rdfs:range  eli:LegalResourceSubdivision ;
+    skos:prefLabel "prohibited by"@en ;
+    skos:definition "Relates a prohibited practice to the provision that prohibits it."@en ;
+    rdfs:comment "Art. 5(1)."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:providedFor a owl:ObjectProperty ;
+    rdfs:subPropertyOf aia:definedIn ;
+    rdfs:domain aia:Exemption ;
+    rdfs:range  eli:LegalResourceSubdivision ;
+    skos:prefLabel "provided for by"@en ;
+    skos:definition "Relates an exemption to the provision that provides for it."@en ;
+    rdfs:comment "Art. 5(2)-(4)."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Risk classification ########################################
+
+aia:hasRiskCategory a owl:ObjectProperty ;
+    rdfs:domain airo:AISystem ;
+    rdfs:range  eu-aiact-owl:RiskLevel ;
+    skos:prefLabel "has risk category"@en ;
+    skos:definition """Relates an AI system to the risk tier of the Act into which it
+        falls."""@en ;
+    rdfs:comment """Art. 6. Values are eu-aiact-owl:RiskLevel tiers. Distinct from
+        eu-aiact-owl:hasRiskLevel, whose assertions in the import sit on CLASSES and so do
+        not propagate to instances; see the classification-rule section."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Roles and their holding ####################################
+
+aia:concernsSystem a owl:ObjectProperty ;
+    rdfs:domain [ a owl:Class ; owl:unionOf ( aia:RoleAssignment aia:RoleReassignment ) ] ;
+    rdfs:range  airo:AISystem ;
+    skos:prefLabel "concerns system"@en ;
+    skos:definition """Relates a role assignment or a role reassignment to the AI system it
+        is relative to."""@en ;
+    rdfs:comment """Union domain, not two rdfs:domain triples: aia:RoleAssignment and
+        aia:RegulatoryEvent are disjoint, so two domains would make every use
+        inconsistent. See the section note."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:hasRole a owl:ObjectProperty ;
+    rdfs:domain aia:RoleAssignment ;
+    rdfs:range  aia:Role ;
+    skos:prefLabel "has role"@en ;
+    skos:definition "Relates a role assignment to the role assigned."@en ;
+    rdfs:comment "Range is aia:Role, whose members are roles, not actors."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:heldBy a owl:ObjectProperty ;
+    rdfs:domain aia:RoleAssignment ;
+    rdfs:range  airo:AIOperator ;
+    skos:prefLabel "held by"@en ;
+    skos:definition "Relates a role assignment to the actor that holds the role."@en ;
+    rdfs:comment """Range airo:AIOperator, which AIRO sources to Art. 3(8) -- provider,
+        product manufacturer, deployer, authorised representative, importer or
+        distributor -- and which is therefore exactly the set of parties that can hold a
+        role under the Act."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Role reassignment, Art. 25 #################################
+
+aia:triggeredBy a owl:ObjectProperty ;
+    rdfs:domain aia:RoleReassignment ;
+    rdfs:range  aia:ReassignmentCondition ;
+    skos:prefLabel "triggered by"@en ;
+    skos:definition "Relates a role reassignment to the condition whose occurrence triggers it."@en ;
+    rdfs:comment "Art. 25(1)(a)-(c)."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:promotes a owl:ObjectProperty ;
+    rdfs:domain aia:RoleReassignment ;
+    rdfs:range  aia:RoleAssignment ;
+    skos:prefLabel "promotes"@en ;
+    skos:definition """Relates a role reassignment to the pre-existing role assignment whose
+        holder thereby becomes a provider."""@en ;
+    rdfs:comment """Art. 25(1). Deliberately does NOT end the prior assignment: Art. 25(1)
+        does not provide that the prior role ceases, and Recital 83 supports the cumulative
+        reading. Contrast aia:terminates."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:establishes a owl:ObjectProperty ;
+    rdfs:domain aia:RoleReassignment ;
+    rdfs:range  aia:RoleAssignment ;
+    skos:prefLabel "establishes"@en ;
+    skos:definition "Relates a role reassignment to the new provider role assignment it creates."@en ;
+    rdfs:comment "Art. 25(1)."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:terminates a owl:ObjectProperty ;
+    rdfs:domain aia:RoleReassignment ;
+    rdfs:range  aia:RoleAssignment ;
+    skos:prefLabel "terminates"@en ;
+    skos:definition """Relates a role reassignment to the initial provider's role assignment,
+        which it brings to an end."""@en ;
+    rdfs:comment """Art. 25(2), which provides in terms that the initial provider ceases to
+        be provider. The asymmetry with aia:promotes is the substantive content of the
+        event."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+#################################################################
+#    Article 25(2): reading the termination from the assignment
+#
+#    THE PROBLEM THIS SOLVES. Running CQ3 over the worked example
+#    returned twelve Article 16 duties for TalentFlow GmbH as provider
+#    of the recruitment system -- an assignment Art. 25(2) TERMINATES.
+#    The Act says in terms that the initial provider "shall no longer
+#    be considered to be a provider of that specific AI system", so
+#    those twelve rows stated duties that no longer bind. The
+#    termination was recorded, but only as an edge on the EVENT, and
+#    CQ3 joins through assignments and never looked at the event.
+#
+#    WHY NOT A VALIDITY INTERVAL. The obvious fix is start and end
+#    dates on aia:RoleAssignment, and it is the wrong one here: the
+#    Act supplies NO DATES. Art. 25(2) is condition-triggered -- the
+#    initial provider ceases to be provider "where the circumstances
+#    referred to in paragraph 1 occur" -- so an interval would be a
+#    slot the source cannot fill, and every interval in the worked
+#    example would be unbound. This is the same objection that decided
+#    the classification rule: do not assert more than the provision states. Intervals
+#    become worth adding at one specific point, namely when the data
+#    comes from the Art. 49 / 71 EU database, which does carry
+#    registration dates.
+#
+#    WHY NOT A FILTER IN THE QUERY. One line of
+#    FILTER NOT EXISTS { ?e aia:terminates ?assignment } in CQ3 would
+#    also fix it, and puts a rule of law inside a query: the next
+#    consumer of aia:RoleAssignment gets it wrong again.
+#
+#    WHAT IS DONE INSTEAD. Liveness is derived, not asserted. The
+#    inverse of aia:terminates makes the fact reachable FROM the
+#    assignment, and a defined class names the resulting kind, so CQ3
+#    cites a modelled class rather than restating the rule. If the
+#    circumstances that end an assignment are ever broadened, the axiom
+#    changes and every query follows.
+#
+#    TERMINATED IS NOT DELETED, and that is deliberate. The assignment
+#    remains in the graph with all its arguments, because Art. 25(2)'s
+#    second and third subparagraphs impose duties that OUTLAST the role:
+#    the initial provider must cooperate with the new provider, make
+#    technical documentation available, disclose known limitations and
+#    failure modes, and give targeted technical access. An obligation
+#    that outlives the role bearing it has nothing to attach to under
+#    role-as-class, since the class the actor belonged to is exactly
+#    what it has stopped belonging to. Here it attaches through
+#    aia:borneOnTermination to the role whose assignment was ended, and
+#    CQ3 reaches it from the terminated assignment.
+#################################################################
+
+aia:terminatedBy a owl:ObjectProperty ;
+    owl:inverseOf aia:terminates ;
+    rdfs:domain aia:RoleAssignment ;
+    rdfs:range  aia:RoleReassignment ;
+    skos:prefLabel "terminated by"@en ;
+    skos:definition """Relates a role assignment to the regulatory event that brought it to
+        an end."""@en ;
+    rdfs:comment """Art. 25(2). Declared as the owl:inverseOf aia:terminates and nothing
+        more: it adds no fact, only a direction. Without it the termination is reachable
+        only from the event, and every query that joins through assignments -- which is
+        CQ3 and CQ4 -- cannot see it."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:TerminatedRoleAssignment a owl:Class ;
+    owl:equivalentClass [
+        a owl:Restriction ;
+        owl:onProperty aia:terminatedBy ;
+        owl:someValuesFrom aia:RoleReassignment
+    ] ;
+    rdfs:subClassOf aia:RoleAssignment ;
+    skos:prefLabel "Terminated role assignment"@en ;
+    skos:definition """A role assignment that a regulatory event has brought to an end, so
+        that the actor no longer holds the role in respect of the system and no longer bears
+        the obligations attaching to it, save those the Act attaches to the ending itself
+        (aia:borneOnTermination)."""@en ;
+    rdfs:comment """Art. 25(2). The second defined class in this file, and defined the same
+        way as aia:HighRiskByGround: an owl:equivalentClass over a property restriction,
+        so that membership is ENTAILED from the recorded event rather than asserted twice.
+        A biconditional is right here where it was wrong for high risk -- Art. 25(2) states
+        the only circumstance in which an assignment in this model ends, whereas Art. 6 is
+        not the only route to the high-risk category. CQ3 excludes this class by
+        FILTER NOT EXISTS, which is why CQ3 now requires the inferred graph."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Deontic attachment #########################################
+
+aia:borneBy a owl:ObjectProperty ;
+    rdfs:domain aia:Obligation ;
+    rdfs:range  aia:Role ;
+    skos:prefLabel "borne by"@en ;
+    skos:definition "Relates an obligation to the role that bears it."@en ;
+    rdfs:comment """Local and unavoidably so: no surveyed ontology attaches an obligation to
+        the party bound. dpv:hasObligation has domain dpv:Context and mailo:hasObligation
+        domain RegulatoryFramework -- both attach duties to the legal source instead."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:borneOnTermination a owl:ObjectProperty ;
+    rdfs:domain aia:Obligation ;
+    rdfs:range  aia:Role ;
+    skos:prefLabel "borne on termination"@en ;
+    skos:definition """Relates an obligation to the role whose former holder bears it once a
+        regulatory event has terminated its assignment of that role."""@en ;
+    rdfs:comment """Art. 25(2), second and third subparagraphs: the initial provider's
+        residual duties towards the new provider. Deliberately NOT a subproperty of
+        aia:borneBy: that would entail these duties onto every LIVE provider assignment,
+        and CQ4 would report them as duties acquired by the new provider."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:appliesToCategory a owl:ObjectProperty ;
+    rdfs:domain aia:Obligation ;
+    rdfs:range  eu-aiact-owl:RiskLevel ;
+    skos:prefLabel "applies to category"@en ;
+    skos:definition "Relates an obligation to the risk tier of systems it attaches to."@en ;
+    rdfs:comment "Arts. 16, 26."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:hasExemption a owl:ObjectProperty ;
+    rdfs:domain aia:ProhibitedPractice ;
+    rdfs:range  aia:Exemption ;
+    skos:prefLabel "has exemption"@en ;
+    skos:definition "Relates a prohibited practice to a conditional exemption from it."@en ;
+    rdfs:comment """Art. 5(1), 5(1a)-(1b), 5(2)-(4). A practice with no aia:hasExemption binding reads as
+        UNCONDITIONALLY prohibited, so a missing exemption is a stronger legal claim than
+        the Act makes, not a visible gap. Check each against the Official Journal."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+### Oversight and conformity ###################################
+
+aia:oversees a owl:ObjectProperty ;
+    rdfs:domain aia:OversightAssignment ;
+    rdfs:range  aia:Obligation ;
+    skos:prefLabel "oversees"@en ;
+    skos:definition "Relates an oversight assignment to the obligation supervised."@en ;
+    rdfs:comment """Arts. 70, 74. Local because eu-aiact names the authorities but does not
+        connect them to the obligations they supervise."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:assignedTo a owl:ObjectProperty ;
+    rdfs:domain aia:OversightAssignment ;
+    rdfs:range  [ a owl:Class ; owl:unionOf ( dpv-owl:Authority
+                                              eu-aiact-owl:ConformityAssessmentBody ) ] ;
+    skos:prefLabel "assigned to"@en ;
+    skos:definition "Relates an oversight assignment to the authority or body that supervises."@en ;
+    rdfs:comment """Arts. 70, 74. Union range: eu-aiact's national competent authority and
+        AI Office descend from dpv-owl:Authority, but eu-aiact:NotifiedBody descends from
+        eu-aiact:ConformityAssessmentBody instead, so no single class covers all four
+        authority kinds CQ5 asks for."""@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+aia:appliesToObligation a owl:ObjectProperty ;
+    rdfs:domain aia:ConformityAssessmentRoute ;
+    rdfs:range  aia:Obligation ;
+    skos:prefLabel "applies to obligation"@en ;
+    skos:definition """Relates a conformity assessment route to the obligation whose
+        discharge it governs."""@en ;
+    rdfs:comment "Art. 43, Annexes VI-VII."@en ;
+    dct:source <http://data.europa.eu/eli/reg/2024/1689/oj> .
+
+
+#################################################################
+#    Article resources
+#
+#    Provenance moves from ACT level to ARTICLE level here. Until now
+#    every local term carried dct:source to the Act's ELI URI with the
+#    article named only in an rdfs:comment string; the resources below
+#    make the article a first-class thing that queries can bind and
+#    order on, which is what every ?article column in ../queries/ needs.
+#
+#    NAMESPACE CHOICE. These are minted in the LOCAL namespace, not
+#    under data.europa.eu. The Publications Office publishes the ELI
+#    URI of the Act as a whole, which resolves and is used as
+#    dct:source throughout; article-level ELI URIs for this regulation
+#    are not relied on here, so inventing them under someone else's
+#    authority would assert a resolvable identifier that may not exist.
+#    The local resources are instead tied to the Act by
+#    eli:is_part_of, which is the relation ELI itself defines for
+#    "an article included in a text".
+#
+#    Typing them eli:LegalResourceSubdivision is sound in v1.4, which
+#    declares that class under BOTH eli:LegalResource and
+#    eli:WorkSubdivision, both under eli:Work -- and eli:is_part_of has
+#    domain and range eli:Work. Pinned to v1.3 this would not hold; the
+#    version is therefore load-bearing, not incidental.
+#
+#    eli:number has range xsd:string, so numbers are strings. A
+#    SPARQL ORDER BY on them is lexicographic, which is why "16" sorts
+#    before "5". Queries that need numeric order must cast.
+#################################################################
+
+<http://data.europa.eu/eli/reg/2024/1689/oj> a eli:LegalResource ;
+    eli:number "2024/1689" ;
+    skos:prefLabel "Regulation (EU) 2024/1689 (the EU AI Act)"@en .
+
+### Articles ###################################################
+
+aia:art_3 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "3" ;
+    skos:prefLabel "Article 3 — Definitions"@en .
+
+aia:art_5 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "5" ;
+    skos:prefLabel "Article 5 — Prohibited AI practices"@en .
+
+aia:art_6 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "6" ;
+    skos:prefLabel "Article 6 — Classification rules for high-risk AI systems"@en .
+
+aia:art_16 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "16" ;
+    skos:prefLabel "Article 16 — Obligations of providers of high-risk AI systems"@en .
+
+aia:art_17 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "17" ;
+    skos:prefLabel "Article 17 — Quality management system"@en .
+
+aia:art_25 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "25" ;
+    skos:prefLabel "Article 25 — Responsibilities along the AI value chain"@en .
+
+aia:art_26 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "26" ;
+    skos:prefLabel "Article 26 — Obligations of deployers of high-risk AI systems"@en .
+
+aia:art_43 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "43" ;
+    skos:prefLabel "Article 43 — Conformity assessment"@en .
+
+# In scope for its RISK TIER only, not its obligations; see decision 2 in
+# ../reports/STATUS.md and section 1 of report.md.
+aia:art_50 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "50" ;
+    skos:prefLabel "Article 50 — Transparency obligations for providers and deployers"@en .
+
+aia:art_70 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "70" ;
+    skos:prefLabel "Article 70 — National competent authorities"@en .
+
+aia:art_74 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "74" ;
+    skos:prefLabel "Article 74 — Market surveillance"@en .
+
+aia:art_75 a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "75" ;
+    skos:prefLabel "Article 75 — Market surveillance and control of AI systems and mutual assistance"@en .
+
+### Annexes ####################################################
+
+aia:annex_I a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "I" ;
+    skos:prefLabel "Annex I — Union harmonisation legislation"@en .
+
+# Referenced by Art. 5(1)(h)(iii). Minted on verification against the consolidated
+# text, which supplies the list: sixteen offence categories, from terrorism and
+# trafficking in human beings to participation in a criminal organisation.
+aia:annex_II a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "II" ;
+    skos:prefLabel "Annex II — List of criminal offences referred to in Article 5(1)(h)(iii)"@en .
+
+aia:annex_III a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "III" ;
+    skos:prefLabel "Annex III — High-risk AI systems referred to in Article 6(2)"@en .
+
+aia:annex_VI a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "VI" ;
+    skos:prefLabel "Annex VI — Conformity assessment procedure based on internal control"@en .
+
+aia:annex_VII a eli:LegalResourceSubdivision ;
+    eli:is_part_of <http://data.europa.eu/eli/reg/2024/1689/oj> ;
+    eli:number "VII" ;
+    skos:prefLabel "Annex VII — Conformity based on quality management system"@en .
+
+### Article-level provenance for the imported risk tiers ########
+#
+#    CQ1 binds  ?category aia:definedIn ?article  where ?category is an
+#    imported eu-aiact tier. These are the only assertions this file
+#    makes ABOUT imported terms, and they are annotational: aia:definedIn
+#    has no rdfs:domain precisely so that they force no type onto the
+#    tiers, which are punned class/individual in the import.
+#
+#    RiskLevelMinimal gets none: no article of the Act establishes a
+#    minimal-risk tier, which is the residual category. Asserting an
+#    article for it would invent a provision.
+
+eu-aiact-owl:RiskLevelProhibited            aia:definedIn aia:art_5 .
+eu-aiact-owl:RiskLevelHigh                  aia:definedIn aia:art_6 .
+eu-aiact-owl:RiskLevelTransparencyRequired  aia:definedIn aia:art_50 .
+
+
+#################################################################
+#    Role individuals
+#
+#    These are INDIVIDUALS of aia:Role, not classes. That is the whole
+#    point of the reification: an actor's role under the Act holds only
+#    relative to a particular system and is contingent on conduct, so
+#    it cannot be class membership. Article 25 converts a deployer into
+#    a provider of one specific system, which under disjoint role
+#    CLASSES would make the ontology inconsistent; as individuals
+#    reached through aia:RoleAssignment it is simply two assignments.
+#
+#    This is what distinguishes aia:Provider from
+#    eu-aiact-owl:AIProvider and airo:AIProvider, which are classes OF
+#    ACTORS. An actor is an airo:AIOperator; the role it holds for a
+#    given system is one of the individuals below. The two are related
+#    by an aia:RoleAssignment, never by subsumption.
+#
+#    The six are the operators of Art. 3(8), which AIRO quotes in its
+#    comment on airo:AIOperator. Roles are NOT declared pairwise
+#    distinct: an actor may hold several concurrently and bears each
+#    set of obligations cumulatively, which is a reading of Recital 83
+#    rather than of the operative text. owl:differentFrom would assert
+#    more than the Act does.
+#
+#    Provenance is aia:definedIn to Article 3 with the paragraph named
+#    in rdfs:comment, matching the convention used for the classes.
+#################################################################
+
+aia:Provider a owl:NamedIndividual , aia:Role ;
+    aia:definedIn aia:art_3 ;
+    skos:prefLabel "Provider"@en ;
+    skos:definition """The role of a party that develops an AI system or has one developed
+        and places it on the market or puts it into service under its own name or trade
+        mark, whether for payment or free of charge."""@en ;
+    rdfs:comment "Art. 3(3). Obligations at Art. 16."@en .
+
+aia:Deployer a owl:NamedIndividual , aia:Role ;
+    aia:definedIn aia:art_3 ;
+    skos:prefLabel "Deployer"@en ;
+    skos:definition """The role of a party using an AI system under its own authority, except
+        where the system is used in the course of a personal non-professional activity."""@en ;
+    rdfs:comment "Art. 3(4). Obligations at Art. 26."@en .
+
+aia:AuthorisedRepresentative a owl:NamedIndividual , aia:Role ;
+    aia:definedIn aia:art_3 ;
+    skos:prefLabel "Authorised representative"@en ;
+    skos:definition """The role of a party located in the Union that has received and
+        accepted a written mandate from a provider to carry out the obligations and
+        procedures of the Regulation on that provider's behalf."""@en ;
+    rdfs:comment "Art. 3(5). Obligations at Art. 22."@en .
+
+aia:Importer a owl:NamedIndividual , aia:Role ;
+    aia:definedIn aia:art_3 ;
+    skos:prefLabel "Importer"@en ;
+    skos:definition """The role of a party located in the Union that places on the market an
+        AI system bearing the name or trade mark of a party established in a third
+        country."""@en ;
+    rdfs:comment "Art. 3(6). Obligations at Art. 23. May become provider under Art. 25(1)."@en .
+
+aia:Distributor a owl:NamedIndividual , aia:Role ;
+    aia:definedIn aia:art_3 ;
+    skos:prefLabel "Distributor"@en ;
+    skos:definition """The role of a party in the supply chain, other than the provider or
+        the importer, that makes an AI system available on the Union market."""@en ;
+    rdfs:comment "Art. 3(7). Obligations at Art. 24. May become provider under Art. 25(1)."@en .
+
+aia:ProductManufacturer a owl:NamedIndividual , aia:Role ;
+    aia:definedIn aia:art_3 ;
+    skos:prefLabel "Product manufacturer"@en ;
+    skos:definition """The role of a party that places on the market or puts into service an
+        AI system together with its product and under its own name or trade mark."""@en ;
+    rdfs:comment """Art. 3(8) lists the product manufacturer among the operators; Art. 25(3)
+        governs when it takes on the provider's obligations."""@en .
+
+
+#################################################################
+#    Obligations, Articles 16, 25(2) and 26
+#
+#    Each obligation is an INDIVIDUAL of aia:Obligation carrying four
+#    assertions: aia:borneBy the role that bears it, aia:appliesToCategory
+#    the tier of systems it attaches to, aia:statedIn the article, and a
+#    definition. Together those are exactly what CQ3 binds.
+#
+#    Obligations attach to the ROLE, never to the actor. An actor bears
+#    Article 16 because it holds aia:Provider for the system in question,
+#    reached through aia:RoleAssignment. This is what makes the post-Art. 25
+#    case work: an actor holding both roles bears both sets cumulatively,
+#    and CQ3 returns it once per role.
+#
+#    ── TWO LIMITS THAT MUST NOT BE READ AS COMPLETENESS ──
+#
+#    (1) ALL THREE ARE VERIFIED against the consolidated text 02024R1689
+#        (EN, 27.07.2026), which incorporates Regulation (EU) 2026/1744.
+#        Articles 16 and 26 carry no amendment; Article 25(2) was
+#        replaced, and its residual duties are below. Article 16(a)-(l)
+#        matches verbatim. Article 26's paragraph numbering and coverage are
+#        confirmed, including that 26(3) is a savings clause and correctly
+#        absent. Four corrections were made on verification: 26(9) cited the
+#        wrong instrument (Regulation (EU) 2018/1725 for what the Act gives
+#        as Directive (EU) 2016/680); 26(10) omitted the 48-hour limit and,
+#        more seriously, an express EXCEPTION; 26(8) omitted the consequent
+#        prohibition on use; and 26(5) omitted two carve-outs. Each is noted
+#        on the individual concerned.
+#
+#    (2) CONDITIONALITY IS NOT MODELLED, AND THIS OVERSTATES THE ACT.
+#        Four of the Article 26 duties apply only in defined circumstances:
+#        26(8) only to public-authority deployers, 26(9) only where a data
+#        protection impact assessment is required, 26(10) only to post-remote
+#        biometric identification in a criminal investigation, and 26(11)
+#        only where an Annex III system makes or assists decisions about
+#        persons. The model has no mechanism for a conditional obligation --
+#        aia:Exemption exists for prohibited practices, and nothing
+#        corresponds to it here -- so each is asserted flatly and the
+#        condition survives only in an rdfs:comment. The failure mode is the
+#        same as for the Art. 5 exemptions: the model reads as a STRONGER duty than the Act
+#        imposes, and the gap is invisible to every query. A conditional
+#        obligation construct is the right fix and is not built.
+#
+#        Two further conditions of the same kind apply to EVERY duty here.
+#        Art. 2(2) applies only Art. 6(1), Art. 60a and Arts. 102-112 to
+#        high-risk systems related to Annex I, Section B products, so none
+#        of these duties binds under this Regulation for those systems,
+#        although aia:appliesToCategory attaches them to the whole tier.
+#        And Art. 2(13) lets delegated acts limit the Art. 17-25 duties for
+#        Annex I, Section A systems; none has yet been adopted. The four
+#        Art. 25(2) residual duties are conditional too: none applies where
+#        the initial provider clearly specified that its system is not to be
+#        changed into a high-risk AI system.
+#################################################################
+
+### Article 16 — obligations of providers of high-risk AI systems
+#   Verified against the Official Journal.
+
+aia:ob_art16_a a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Ensure compliance with the Section 2 requirements"@en ;
+    skos:definition """Ensure that the high-risk AI system is compliant with the requirements
+        laid down in Section 2 of Chapter III."""@en ;
+    rdfs:comment "Art. 16(a). The requirements themselves are Arts. 8-15."@en .
+
+aia:ob_art16_b a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Indicate identity and contact address"@en ;
+    skos:definition """Indicate on the high-risk AI system or, where that is not possible, on
+        its packaging or accompanying documentation, the provider's name, registered trade
+        name or registered trade mark and the address at which it can be contacted."""@en ;
+    rdfs:comment "Art. 16(b)."@en .
+
+aia:ob_art16_c a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Maintain a quality management system"@en ;
+    skos:definition "Have in place a quality management system complying with Article 17."@en ;
+    rdfs:comment """Art. 16(c), referring to Art. 17. eu-aiact-owl:QualityManagementSystem is
+        the artefact; the duty to maintain it is local, since the import states no duties."""@en .
+
+aia:ob_art16_d a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Keep the technical documentation"@en ;
+    skos:definition "Keep the documentation referred to in Article 18."@en ;
+    rdfs:comment "Art. 16(d), referring to Art. 18 and Annex IV."@en .
+
+aia:ob_art16_e a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Keep automatically generated logs"@en ;
+    skos:definition """When under the provider's control, keep the logs automatically
+        generated by the high-risk AI system as referred to in Article 19."""@en ;
+    rdfs:comment """Art. 16(e), referring to Art. 19. "When under their control" is a
+        qualification on scope that is not modelled; see limit (2) above."""@en .
+
+aia:ob_art16_f a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Undergo conformity assessment before market placement"@en ;
+    skos:definition """Ensure that the high-risk AI system undergoes the relevant conformity
+        assessment procedure referred to in Article 43 prior to its being placed on the
+        market or put into service."""@en ;
+    rdfs:comment "Art. 16(f), referring to Art. 43 and Annexes VI-VII."@en .
+
+aia:ob_art16_g a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Draw up the EU declaration of conformity"@en ;
+    skos:definition "Draw up an EU declaration of conformity in accordance with Article 47."@en ;
+    rdfs:comment "Art. 16(g), referring to Art. 47."@en .
+
+aia:ob_art16_h a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Affix the CE marking"@en ;
+    skos:definition """Affix the CE marking to the high-risk AI system or, where that is not
+        possible, to its packaging or accompanying documentation, to indicate conformity with
+        the Regulation, in accordance with Article 48."""@en ;
+    rdfs:comment "Art. 16(h), referring to Art. 48."@en .
+
+aia:ob_art16_i a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Comply with registration obligations"@en ;
+    skos:definition "Comply with the registration obligations referred to in Article 49(1)."@en ;
+    rdfs:comment "Art. 16(i), referring to Art. 49(1)."@en .
+
+aia:ob_art16_j a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Take corrective action and inform"@en ;
+    skos:definition """Take the necessary corrective actions and provide the information
+        required by Article 20."""@en ;
+    rdfs:comment "Art. 16(j), referring to Art. 20."@en .
+
+aia:ob_art16_k a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Demonstrate conformity on reasoned request"@en ;
+    skos:definition """Upon a reasoned request of a national competent authority, demonstrate
+        the conformity of the high-risk AI system with the requirements of Section 2."""@en ;
+    rdfs:comment """Art. 16(k). The correlative supervisory competence is Art. 21; this is
+        the duty CQ5 pairs with an aia:OversightAssignment."""@en .
+
+aia:ob_art16_l a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_16 ;
+    skos:prefLabel "Ensure accessibility"@en ;
+    skos:definition """Ensure that the high-risk AI system complies with accessibility
+        requirements in accordance with Directives (EU) 2016/2102 and (EU) 2019/882."""@en ;
+    rdfs:comment """Art. 16(l). The two directives are outside the Act and are not modelled;
+        no ELI resource is minted for them."""@en .
+
+### Article 26 — obligations of deployers of high-risk AI systems
+#   VERIFIED against the Official Journal, 2026-09-26, with four corrections.
+#   See limit (1) above and the rdfs:comment on each individual.
+
+aia:ob_art26_1 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Use in accordance with the instructions for use"@en ;
+    skos:definition """Take appropriate technical and organisational measures to ensure that
+        the high-risk AI system is used in accordance with the instructions for use
+        accompanying it."""@en ;
+    rdfs:comment "Art. 26(1). VERIFIED against the consolidated OJ text."@en .
+
+aia:ob_art26_2 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Assign competent human oversight"@en ;
+    skos:definition """Assign human oversight to natural persons who have the necessary
+        competence, training and authority, as well as the necessary support."""@en ;
+    rdfs:comment """Art. 26(2). VERIFIED against the consolidated OJ text. The correlative provider-side
+        requirement is Art. 14; aia:OversightAssignment reifies the supervisory relation,
+        which is a different thing from this duty."""@en .
+
+aia:ob_art26_4 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Ensure input data is relevant and representative"@en ;
+    skos:definition """To the extent the deployer exercises control over the input data,
+        ensure that it is relevant and sufficiently representative in view of the intended
+        purpose of the high-risk AI system."""@en ;
+    rdfs:comment """Art. 26(4). VERIFIED against the consolidated OJ text. The control qualification is a
+        scope limit that is not modelled; see limit (2)."""@en .
+
+aia:ob_art26_5 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Monitor operation and report risks and incidents"@en ;
+    skos:definition """Monitor the operation of the high-risk AI system on the basis of the
+        instructions for use; where use may present a risk, inform the provider or
+        distributor and the market surveillance authority and suspend use; and where a
+        serious incident is identified, inform first the provider, then the importer or
+        distributor and the relevant market surveillance authorities."""@en ;
+    rdfs:comment """Art. 26(5), with Arts. 72, 73 and 79(1). VERIFIED. The duty does NOT
+        cover sensitive operational data of deployers that are law enforcement authorities,
+        and is deemed fulfilled for financial institutions complying with internal-governance
+        rules under Union financial services law. Neither carve-out is modelled."""@en .
+
+aia:ob_art26_6 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Keep logs for at least six months"@en ;
+    skos:definition """Keep the logs automatically generated by the high-risk AI system, to
+        the extent they are under the deployer's control, for a period appropriate to the
+        intended purpose and of at least six months."""@en ;
+    rdfs:comment "Art. 26(6). VERIFIED against the consolidated OJ text."@en .
+
+aia:ob_art26_7 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Inform workers before workplace deployment"@en ;
+    skos:definition """Before putting a high-risk AI system into service or using it at the
+        workplace, inform workers' representatives and the affected workers that they will be
+        subject to its use."""@en ;
+    rdfs:comment """Art. 26(7). VERIFIED against the consolidated OJ text. CONDITIONAL on the deployer being
+        an employer; the condition is not modelled -- see limit (2)."""@en .
+
+aia:ob_art26_8 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Comply with registration obligations (public authorities)"@en ;
+    skos:definition """Where the deployer is a public authority or a Union institution, body,
+        office or agency, comply with the registration obligations referred to in
+        Article 49; and, on finding that a high-risk AI system they envisage using has not
+        been registered in the EU database, not use that system and inform the provider or
+        the distributor."""@en ;
+    rdfs:comment """Art. 26(8). VERIFIED. CORRECTED on verification: the earlier draft carried
+        only the registration limb and omitted the consequent prohibition on use. CONDITIONAL
+        on the deployer being a public authority or a Union institution, body, office or
+        agency; asserted flatly here, which overstates it -- see limit (2)."""@en .
+
+aia:ob_art26_9 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Use Article 13 information for the data protection impact assessment"@en ;
+    skos:definition """Where applicable, use the information provided under Article 13 to
+        comply with the obligation to carry out a data protection impact assessment."""@en ;
+    rdfs:comment """Art. 26(9). VERIFIED. CONDITIONAL: applies only where a data protection
+        impact assessment is required under Art. 35 of Regulation (EU) 2016/679 or Art. 27 of
+        Directive (EU) 2016/680. CORRECTED on verification: an earlier draft cited Regulation
+        (EU) 2018/1725 for the second instrument, which is wrong -- the Act names Directive
+        (EU) 2016/680. Not the Art. 27 AI Act fundamental rights impact assessment, which is
+        out of scope by decision 2; the two Art. 27s are different provisions of different
+        instruments and must not be conflated."""@en .
+
+aia:ob_art26_10 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Seek authorisation for post-remote biometric identification"@en ;
+    skos:definition """In the framework of an investigation for the targeted search of a
+        person suspected or convicted of having committed a criminal offence, request
+        authorisation for the use of a post-remote biometric identification system, ex ante
+        or without undue delay and no later than 48 hours, from a judicial authority or an
+        administrative authority whose decision is binding and subject to judicial review;
+        except where the system is used for the initial identification of a potential suspect
+        based on objective and verifiable facts directly linked to the offence."""@en ;
+    rdfs:comment """Art. 26(10). VERIFIED. CORRECTED on verification: the earlier draft
+        omitted the 48-hour outer limit, the words "or convicted", and -- more seriously --
+        the EXCEPTION for initial identification on objective and verifiable facts. Asserting
+        the duty without that exception was the same silent failure this file warns about for
+        Art. 5: it stated a stronger duty than the Act imposes. The exception is now in the
+        definition, but it is still not MODELLED as an aia:Exemption, because no construct
+        exists for conditional obligations -- see limit (2)."""@en .
+
+aia:ob_art26_11 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Inform persons subject to the system"@en ;
+    skos:definition """Inform natural persons that they are subject to the use of the
+        high-risk AI system where it makes or assists in making decisions related to
+        them."""@en ;
+    rdfs:comment """Art. 26(11). VERIFIED against the consolidated OJ text. CONDITIONAL on the system being
+        an Annex III system taking or assisting decisions about persons. Distinct from the
+        Art. 50 transparency duties, which are out of scope by decision 2."""@en .
+
+aia:ob_art26_12 a owl:NamedIndividual , aia:Obligation ;
+    aia:borneBy aia:Deployer ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_26 ;
+    skos:prefLabel "Cooperate with competent authorities"@en ;
+    skos:definition """Cooperate with the relevant competent authorities in any action those
+        authorities take in relation to the high-risk AI system."""@en ;
+    rdfs:comment "Art. 26(12). VERIFIED against the consolidated OJ text."@en .
+
+### Article 25(2) — residual duties of the initial provider
+#   Verified against the Official Journal. Borne through
+#   aia:borneOnTermination, not aia:borneBy: they bind the provider whose
+#   assignment Art. 25(2) ENDS, and only towards the new provider.
+#   All four share the paragraph's final sentence: they do not apply where
+#   the initial provider clearly specified that its system is not to be
+#   changed into a high-risk AI system. That condition is carried in the
+#   definition and, like the conditional Art. 26 duties, is not modelled.
+
+aia:ob_art25_2_cooperate a owl:NamedIndividual , aia:Obligation ;
+    aia:borneOnTermination aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_25 ;
+    skos:prefLabel "Cooperate with the new provider"@en ;
+    skos:definition """Closely cooperate with the new provider, make available the necessary
+        information and provide the reasonably expected technical access and other assistance
+        required for the fulfilment of the Regulation's obligations, in particular the
+        conformity assessment of high-risk AI systems -- unless the initial provider clearly
+        specified that its AI system is not to be changed into a high-risk AI system."""@en ;
+    rdfs:comment """Art. 25(2), second subparagraph. VERIFIED against the consolidated OJ
+        text. CONDITIONAL: the exception in the paragraph's final sentence is not
+        modelled. Enforceable: Art. 99(4)(da) makes the Art. 25(2) obligations subject to
+        administrative fines."""@en .
+
+aia:ob_art25_2_a a owl:NamedIndividual , aia:Obligation ;
+    aia:borneOnTermination aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_25 ;
+    skos:prefLabel "Make technical documentation available to the new provider"@en ;
+    skos:definition """Where relevant, make available to the new provider technical
+        documentation sufficient to assess compliance with the requirements laid down in
+        Article 16."""@en ;
+    rdfs:comment """Art. 25(2), third subparagraph, point (a). VERIFIED against the
+        consolidated OJ text. CONDITIONAL, as aia:ob_art25_2_cooperate."""@en .
+
+aia:ob_art25_2_b a owl:NamedIndividual , aia:Obligation ;
+    aia:borneOnTermination aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_25 ;
+    skos:prefLabel "Inform the new provider of known limitations and failure modes"@en ;
+    skos:definition """Where relevant, inform the new provider about the system's known
+        limitations and failure modes."""@en ;
+    rdfs:comment """Art. 25(2), third subparagraph, point (b). VERIFIED against the
+        consolidated OJ text. CONDITIONAL, as aia:ob_art25_2_cooperate."""@en .
+
+aia:ob_art25_2_c a owl:NamedIndividual , aia:Obligation ;
+    aia:borneOnTermination aia:Provider ; aia:appliesToCategory eu-aiact-owl:RiskLevelHigh ;
+    aia:statedIn aia:art_25 ;
+    skos:prefLabel "Give the new provider targeted technical access"@en ;
+    skos:definition """Where relevant, provide the new provider with targeted technical access,
+        including for testing and validation."""@en ;
+    rdfs:comment """Art. 25(2), third subparagraph, point (c). VERIFIED against the
+        consolidated OJ text. CONDITIONAL, as aia:ob_art25_2_cooperate."""@en .
+
+
+#################################################################
+#    Article 5 prohibited practices and exemptions
+#
+#    PRACTICES, NOT ARTEFACTS. Each of the ten is an individual of
+#    aia:ProhibitedPractice, deliberately not typed
+#    eu-aiact-owl:ProhibitedAISystem-A5-1-*, which are subclasses of
+#    AISystem. Article 5 prohibits conduct -- placing on the market,
+#    putting into service, use -- not objects, and the same system may
+#    be lawfully deployed for one purpose and prohibited for another.
+#    The eu-aiact class is cross-referenced by rdfs:seeAlso, which
+#    asserts relatedness without asserting that a practice is a system.
+#
+#    ── THE SILENT FAILURE THIS SECTION IS EXPOSED TO ──
+#
+#    A practice returned by CQ2 with no aia:hasExemption binding reads
+#    as UNCONDITIONALLY prohibited. An exemption that is merely missing
+#    therefore does not surface as a gap -- it surfaces as a STRONGER
+#    legal claim than the Act makes. The four practices below that
+#    carry no exemption are consequently the most dangerous assertions
+#    in this file, and are the ones to check first:
+#        (a) subliminal / manipulative techniques
+#        (b) exploitation of vulnerabilities
+#        (c) social scoring
+#        (e) untargeted scraping for facial recognition databases
+#    They are modelled as unconditional because Art. 5(1) attaches no
+#    derogation to them -- the (i)/(ii) limbs of (c) are
+#    ELEMENTS of the prohibition, not exceptions to it. That reading
+#    needs confirming against the Official Journal.
+#
+#    ── VERIFICATION STATUS: VERIFIED ──
+#
+#    Checked against the consolidated text 02024R1689 (EN, 27.07.2026),
+#    which incorporates Regulation (EU) 2026/1744. Results:
+#
+#      * The reading that Art. 5(1)(c)'s limbs (i) and (ii) are ELEMENTS
+#        of the prohibition rather than EXCEPTIONS to it is CONFIRMED:
+#        the text reads "with the social score leading to either or both
+#        of the following". This was the most load-bearing interpretation
+#        in the section and it holds.
+#      * The four unconditional prohibitions -- (a), (b), (c), (e) --
+#        are CONFIRMED to carry no derogation.
+#      * The exemption distribution (d)1, (f)1, (g)2, (h)3+gate is
+#        CONFIRMED.
+#      * One CORRECTION: Art. 5(1)(h)(iii) requires the offence to be
+#        punishable by a custodial sentence or detention order "for a
+#        MAXIMUM PERIOD of at least four years". The earlier draft
+#        dropped "maximum period", which states a different test.
+#      * Art. 5(2)-(5) was materially under-described and is expanded.
+#
+#      * Art. 5(1)(ba) and (bb) -- non-consensual intimate imagery and
+#        child sexual abuse material -- are modelled from the text
+#        inserted by Regulation (EU) 2026/1744, with the qualifications
+#        of Art. 5(1a) and (1b). Under Art. 113(a) they apply from
+#        2 December 2026, later than the rest of Article 5. eu-aiact
+#        v2.3 predates them and has no terms for them, so their
+#        rdfs:seeAlso points to the amending act instead.
+#      * The consent requirement in (ba) is an ELEMENT of the
+#        prohibition, like (c)'s limbs. Art. 5(1a) and (1b) and (bb)'s
+#        "without right" defence NARROW the prohibitions and are modelled
+#        as exemptions, so that CQ2 does not report them as unconditional.
+#
+#    ── SCOPE ──
+#
+#    Ten prohibitions: (a), (b), (ba), (bb), (c) to (h).
+#
+#    Art. 5(1)(h)'s three law-enforcement purposes are modelled as
+#    three separate exemptions because CQ2 returns one row per
+#    exemption and they are independently invocable. The procedural
+#    conditions of Art. 5(2)-(5) -- prior judicial authorisation, the
+#    fundamental rights impact assessment, registration, notification --
+#    gate all three; they are recorded as a fourth exemption rather
+#    than as conditions ON the other three, because the model has no
+#    construct for a condition on a condition. That is a known
+#    flattening, of the same kind noted for the Art. 26 obligations.
+#################################################################
+
+### Exemptions #################################################
+
+aia:ex_art5_1_d_human a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Support for human assessment on objective, verifiable facts"@en ;
+    skos:definition """The prohibition on predictive criminal-risk assessment does not apply
+        to AI systems used to support a human assessment of a person's involvement in
+        criminal activity which is already based on objective and verifiable facts directly
+        linked to a criminal activity."""@en ;
+    rdfs:comment "Art. 5(1)(d), second sentence. VERIFIED against the consolidated OJ text."@en .
+
+aia:ex_art5_1_f_medical a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Medical or safety reasons"@en ;
+    skos:definition """The prohibition on inferring emotions in the workplace and in
+        education does not apply where the system is intended to be put in place or into the
+        market for medical or safety reasons."""@en ;
+    rdfs:comment "Art. 5(1)(f), proviso. VERIFIED against the consolidated OJ text."@en .
+
+aia:ex_art5_1_g_lawful_dataset a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Labelling or filtering of lawfully acquired biometric datasets"@en ;
+    skos:definition """The prohibition on biometric categorisation does not cover the
+        labelling or filtering of lawfully acquired biometric datasets, such as images, on
+        the basis of biometric data."""@en ;
+    rdfs:comment "Art. 5(1)(g), proviso. VERIFIED against the consolidated OJ text."@en .
+
+aia:ex_art5_1_g_law_enforcement a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Categorisation of biometric data in the area of law enforcement"@en ;
+    skos:definition """The prohibition on biometric categorisation does not cover the
+        categorising of biometric data in the area of law enforcement."""@en ;
+    rdfs:comment "Art. 5(1)(g), proviso. VERIFIED against the consolidated OJ text."@en .
+
+aia:ex_art5_1_h_victims a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Targeted search for victims or missing persons"@en ;
+    skos:definition """Real-time remote biometric identification for law enforcement is
+        permitted where strictly necessary for the targeted search for specific victims of
+        abduction, trafficking in human beings or sexual exploitation, as well as the search
+        for missing persons."""@en ;
+    rdfs:comment """Art. 5(1)(h)(i). VERIFIED against the consolidated OJ text. Gated by
+        aia:ex_art5_1_h_procedural."""@en .
+
+aia:ex_art5_1_h_threat a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Substantial and imminent threat to life, or terrorist attack"@en ;
+    skos:definition """Real-time remote biometric identification for law enforcement is
+        permitted where strictly necessary for the prevention of a specific, substantial and
+        imminent threat to the life or physical safety of natural persons, or of a genuine
+        and present or genuine and foreseeable threat of a terrorist attack."""@en ;
+    rdfs:comment """Art. 5(1)(h)(ii). VERIFIED against the consolidated OJ text. Gated by
+        aia:ex_art5_1_h_procedural."""@en .
+
+aia:ex_art5_1_h_suspect a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Localisation or identification of a suspect of a serious offence"@en ;
+    skos:definition """Real-time remote biometric identification for law enforcement is
+        permitted where strictly necessary for the localisation or identification of a person
+        suspected of having committed a criminal offence, for the purpose of conducting a
+        criminal investigation or prosecution or executing a criminal penalty, for offences
+        referred to in Annex II and punishable in the Member State concerned by a custodial
+        sentence or a detention order for a MAXIMUM PERIOD of at least four years."""@en ;
+    aia:providedFor aia:annex_II ;
+    rdfs:comment """Art. 5(1)(h)(iii). VERIFIED. CORRECTED on verification: the earlier draft
+        read "of at least four years", dropping "for a maximum period", which states a
+        different and narrower test -- it is the statutory maximum that must reach four years,
+        not the sentence imposed. Annex II is now minted and linked. Gated by
+        aia:ex_art5_1_h_procedural."""@en .
+
+aia:ex_art5_1_h_procedural a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Procedural conditions on real-time remote biometric identification"@en ;
+    skos:definition """Each use permitted under Article 5(1)(h) may serve only to confirm the
+        identity of a specifically targeted individual, and is subject to prior authorisation
+        by a judicial authority or an independent administrative authority whose decision is
+        binding (in a duly justified situation of urgency, requested without undue delay and
+        at the latest within 24 hours); to completion of a fundamental rights impact
+        assessment under Article 27 and registration of the system in the EU database under
+        Article 49; and to notification of the relevant market surveillance authority and the
+        national data protection authority."""@en ;
+    rdfs:comment """Art. 5(2)-(5). VERIFIED, and materially expanded on verification: the
+        earlier draft omitted the confirm-identity-only limitation and the 24-hour urgency
+        rule. Recorded as a further exemption rather than as a condition on the other three,
+        because the model has no construct for a condition on a condition; see the section
+        note. This is a FLATTENING and CQ2 will return it as a peer of the three purposes,
+        which it is not.
+
+        SCOPE COLLISION, surfaced by verification. Art. 5(2) conditions this gate on an
+        ARTICLE 27 fundamental rights impact assessment, which decision 2 placed OUT of
+        scope. The Art. 5 exemption layer therefore depends on a provision this model
+        deliberately excludes, and eu-aiact-owl:FRIA -- the term decision 2 named as the
+        attachment point if scope ever widened -- is exactly what would be needed here. This
+        does not reverse decision 2, but it is a dependency that was not visible when that
+        decision was taken. Recorded in reports/STATUS.md."""@en .
+
+aia:ex_art5_1a_scope a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Generation neither intended, nor foreseeable without adequate safeguards"@en ;
+    skos:definition """Placing on the market or putting into service a system that can generate
+        or manipulate the material concerned is prohibited only where that is its intended
+        purpose, or where its design, training, architecture, capabilities or user-facing
+        functionalities make it a reasonably foreseeable and reproducible outcome without
+        significant technical modification and it lacks reasonable and adequate technical
+        safety measures and other safeguards to reliably prevent it and to correct observed or
+        reported misuse. Use is prohibited only where the deployer uses the system for the
+        purpose of generating or manipulating such material."""@en ;
+    rdfs:comment """Art. 5(1a). VERIFIED against the consolidated OJ text. Shared by the
+        (ba) and (bb) prohibitions. Applies from 2 December 2026 (Art. 113(a))."""@en .
+
+aia:ex_art5_1b_no_increased_exposure a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "Manipulation not increasing exposure or altering sexual activity"@en ;
+    skos:definition """Manipulating material in a way that does not increase the exposure of any
+        depicted intimate parts or alter the nature of any depicted sexually explicit
+        activities does not constitute manipulation for the purposes of the (ba)
+        prohibition."""@en ;
+    rdfs:comment """Art. 5(1b). VERIFIED against the consolidated OJ text. Applies from
+        2 December 2026 (Art. 113(a))."""@en .
+
+aia:ex_art5_1_bb_without_right a owl:NamedIndividual , aia:Exemption ;
+    aia:providedFor aia:art_5 ;
+    skos:prefLabel "\"Without right\" defence under national law"@en ;
+    skos:definition """The prohibition on AI systems generating or manipulating child sexual
+        abuse material does not apply where a \"without right\" defence applies under national
+        law."""@en ;
+    rdfs:comment """Art. 5(1)(bb), proviso, referring to Directive 2011/93/EU. VERIFIED against
+        the consolidated OJ text. Applies from 2 December 2026 (Art. 113(a))."""@en .
+
+### Practices ##################################################
+
+aia:pp_art5_1_a a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-a ;
+    skos:prefLabel "Subliminal, manipulative or deceptive techniques"@en ;
+    skos:definition """Placing on the market, putting into service or using an AI system that
+        deploys subliminal techniques beyond a person's consciousness, or purposefully
+        manipulative or deceptive techniques, with the objective or effect of materially
+        distorting behaviour by appreciably impairing the ability to make an informed
+        decision, causing or reasonably likely to cause significant harm."""@en ;
+    rdfs:comment """Art. 5(1)(a). VERIFIED against the consolidated OJ text. NO EXEMPTION, deliberately;
+        read as unconditional. See the silent-failure note above."""@en .
+
+aia:pp_art5_1_b a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-b ;
+    skos:prefLabel "Exploitation of vulnerabilities"@en ;
+    skos:definition """Placing on the market, putting into service or using an AI system that
+        exploits the vulnerabilities of a natural person or a specific group, owing to age,
+        disability or a specific social or economic situation, with the objective or effect
+        of materially distorting behaviour in a manner that causes or is reasonably likely to
+        cause significant harm."""@en ;
+    rdfs:comment """Art. 5(1)(b). VERIFIED against the consolidated OJ text. NO EXEMPTION, deliberately;
+        read as unconditional."""@en .
+
+aia:pp_art5_1_ba a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    rdfs:seeAlso <http://data.europa.eu/eli/reg/2026/1744/oj> ;
+    aia:hasExemption aia:ex_art5_1a_scope ,
+                     aia:ex_art5_1b_no_increased_exposure ;
+    skos:prefLabel "Non-consensual intimate or sexually explicit imagery"@en ;
+    skos:definition """Placing on the market, putting into service or using an AI system that
+        generates or manipulates realistic images, videos, audio or similar material of an
+        identifiable natural person's intimate parts, or of an identifiable natural person
+        engaged in sexually explicit activities, without that person's freely-given,
+        specific, informed, unambiguous and explicit consent to that generation or
+        manipulation."""@en ;
+    rdfs:comment """Art. 5(1)(ba), inserted by Regulation (EU) 2026/1744. VERIFIED against the
+        consolidated OJ text. Applies from 2 December 2026 (Art. 113(a)). The absence of
+        consent is an ELEMENT of the prohibition, not an exemption. No eu-aiact term;
+        rdfs:seeAlso names the inserting act instead."""@en .
+
+aia:pp_art5_1_bb a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    rdfs:seeAlso <http://data.europa.eu/eli/reg/2026/1744/oj> ;
+    aia:hasExemption aia:ex_art5_1a_scope ,
+                     aia:ex_art5_1_bb_without_right ;
+    skos:prefLabel "Child sexual abuse material"@en ;
+    skos:definition """Placing on the market, putting into service or using an AI system that
+        generates or manipulates material or performance within the meaning of Article 2,
+        points (c) and (e), of Directive 2011/93/EU."""@en ;
+    rdfs:comment """Art. 5(1)(bb), inserted by Regulation (EU) 2026/1744. VERIFIED against the
+        consolidated OJ text. Applies from 2 December 2026 (Art. 113(a)). No eu-aiact
+        term."""@en .
+
+aia:pp_art5_1_c a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-c ;
+    skos:prefLabel "Social scoring"@en ;
+    skos:definition """Placing on the market, putting into service or using an AI system for
+        the evaluation or classification of natural persons or groups over a period of time
+        based on social behaviour or known, inferred or predicted personal characteristics,
+        where the resulting social score leads to detrimental or unfavourable treatment in
+        social contexts unrelated to those in which the data was generated, or treatment
+        unjustified or disproportionate to the behaviour."""@en ;
+    rdfs:comment """Art. 5(1)(c). VERIFIED against the consolidated OJ text. NO EXEMPTION, deliberately: the
+        two limbs (i) and (ii) are ELEMENTS of the prohibition, not exceptions to it, so
+        they are folded into the definition rather than modelled as aia:Exemption. This
+        reading is the one most worth checking."""@en .
+
+aia:pp_art5_1_d a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    aia:hasExemption aia:ex_art5_1_d_human ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-d ;
+    skos:prefLabel "Predictive assessment of criminal risk"@en ;
+    skos:definition """Placing on the market, putting into service for this specific purpose,
+        or using an AI system for making risk assessments of natural persons in order to
+        assess or predict the risk of a natural person committing a criminal offence, based
+        solely on profiling or on assessing personality traits and characteristics."""@en ;
+    rdfs:comment "Art. 5(1)(d). VERIFIED against the consolidated OJ text."@en .
+
+aia:pp_art5_1_e a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-e ;
+    skos:prefLabel "Untargeted scraping for facial recognition databases"@en ;
+    skos:definition """Placing on the market, putting into service for this specific purpose,
+        or using an AI system that creates or expands facial recognition databases through
+        the untargeted scraping of facial images from the internet or CCTV footage."""@en ;
+    rdfs:comment """Art. 5(1)(e). VERIFIED against the consolidated OJ text. NO EXEMPTION, deliberately;
+        read as unconditional."""@en .
+
+aia:pp_art5_1_f a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    aia:hasExemption aia:ex_art5_1_f_medical ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-f ;
+    skos:prefLabel "Emotion inference in the workplace and in education"@en ;
+    skos:definition """Placing on the market, putting into service for this specific purpose,
+        or using an AI system to infer emotions of a natural person in the areas of workplace
+        and education institutions."""@en ;
+    rdfs:comment "Art. 5(1)(f). VERIFIED against the consolidated OJ text."@en .
+
+aia:pp_art5_1_g a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    aia:hasExemption aia:ex_art5_1_g_lawful_dataset ,
+                     aia:ex_art5_1_g_law_enforcement ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-g ;
+    skos:prefLabel "Biometric categorisation inferring sensitive attributes"@en ;
+    skos:definition """Placing on the market, putting into service for this specific purpose,
+        or using a biometric categorisation system that categorises natural persons
+        individually on the basis of their biometric data to deduce or infer race, political
+        opinions, trade union membership, religious or philosophical beliefs, sex life or
+        sexual orientation."""@en ;
+    rdfs:comment "Art. 5(1)(g). VERIFIED against the consolidated OJ text. Two exemptions."@en .
+
+aia:pp_art5_1_h a owl:NamedIndividual , aia:ProhibitedPractice ;
+    aia:prohibitedBy aia:art_5 ;
+    aia:hasExemption aia:ex_art5_1_h_victims ,
+                     aia:ex_art5_1_h_threat ,
+                     aia:ex_art5_1_h_suspect ,
+                     aia:ex_art5_1_h_procedural ;
+    rdfs:seeAlso eu-aiact-owl:ProhibitedAISystem-A5-1-h ;
+    skos:prefLabel "Real-time remote biometric identification for law enforcement"@en ;
+    skos:definition """Using real-time remote biometric identification systems in publicly
+        accessible spaces for the purposes of law enforcement."""@en ;
+    rdfs:comment """Art. 5(1)(h). VERIFIED against the consolidated OJ text. The most heavily qualified
+        prohibition in the Article: three permitted purposes plus the procedural gate of
+        Art. 5(2)-(5), modelled as four peer exemptions. See the section note on that
+        flattening."""@en .
+
+#################################################################
+#    Article anchors for classes and properties
+#
+#    rdfs:comment citations are readable by a person but invisible to
+#    SPARQL. Each triple below restates, as an aia:definedIn edge, a
+#    citation the term's own comment or definition already makes.
+#    None is new legal content.
+#
+#    Anchors are article-level, as the minted resources are:
+#    "Art. 25(2)" anchors to aia:art_25. Paragraph precision stays
+#    in the comment.
+#
+#    A class or property as the subject of an object property is
+#    OWL 2 punning, allowed in OWL 2 DL. It is why aia:definedIn has
+#    no rdfs:domain, and the eu-aiact risk tiers are anchored the
+#    same way.
+#
+#    Deliberately unanchored, because no provision defines them:
+#    aia:RegulatoryEvent, aia:concernsSystem and aia:hasRole are
+#    modelling devices; aia:definedIn and aia:statedIn are the
+#    provenance machinery itself; aia:borneBy's comment cites no
+#    article, and none is supplied here.
+#################################################################
+
+aia:AnnexIGround aia:definedIn aia:annex_I , aia:art_6 .
+aia:AnnexIIIGround aia:definedIn aia:annex_III , aia:art_6 .
+aia:DerogatedAnnexIIIGround aia:definedIn aia:annex_III , aia:art_6 .
+aia:ClassificationGround aia:definedIn aia:art_6 .
+aia:ConformityAssessmentRoute aia:definedIn aia:art_43 , aia:annex_I , aia:annex_VI , aia:annex_VII .
+aia:Exemption aia:definedIn aia:art_5 .
+aia:HighRiskByGround aia:definedIn aia:art_6 , aia:annex_I , aia:annex_III .
+aia:Obligation aia:definedIn aia:art_16 , aia:art_25 , aia:art_26 .
+aia:OversightAssignment aia:definedIn aia:art_70 , aia:art_74 , aia:art_75 .
+aia:ProhibitedPractice aia:definedIn aia:art_5 .
+aia:PurposeGround aia:definedIn aia:art_3 , aia:art_6 .
+aia:ReassignmentCondition aia:definedIn aia:art_25 .
+aia:Role aia:definedIn aia:art_3 .
+aia:RoleAssignment aia:definedIn aia:art_16 , aia:art_25 , aia:art_26 .
+aia:RoleReassignment aia:definedIn aia:art_25 .
+aia:TerminatedRoleAssignment aia:definedIn aia:art_25 .
+
+aia:appliesToCategory aia:definedIn aia:art_16 , aia:art_26 .
+aia:appliesToObligation aia:definedIn aia:art_43 , aia:annex_VI , aia:annex_VII .
+aia:assignedTo aia:definedIn aia:art_70 , aia:art_74 , aia:art_75 .
+aia:borneOnTermination aia:definedIn aia:art_25 .
+aia:classifiedOnGround aia:definedIn aia:art_6 .
+aia:establishes aia:definedIn aia:art_25 .
+aia:hasExemption aia:definedIn aia:art_5 .
+aia:hasRiskCategory aia:definedIn aia:art_6 .
+aia:heldBy aia:definedIn aia:art_3 .
+aia:oversees aia:definedIn aia:art_70 , aia:art_74 .
+aia:prohibitedBy aia:definedIn aia:art_5 .
+aia:promotes aia:definedIn aia:art_25 .
+aia:providedFor aia:definedIn aia:art_5 .
+aia:terminatedBy aia:definedIn aia:art_25 .
+aia:terminates aia:definedIn aia:art_25 .
+aia:triggeredBy aia:definedIn aia:art_25 .
